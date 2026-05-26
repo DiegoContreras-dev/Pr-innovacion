@@ -1,6 +1,61 @@
 # Sistema Camanchaca — Arduino
 
-Sistema de detección de niebla costera y alerta de vehículos para vías de riesgo. Detecta condiciones de camanchaca mediante humedad y luminosidad, clasifica vehículos por velocidad con ultrasonido, y responde con una tira NeoPixel en efecto cascada con codificación cromática de riesgo.
+**Sistema de Iluminación Vial Inteligente de Guiado Activo**
+Grupo 5 "Los Camanchacas" / "BetaMentes" — Universidad Católica del Norte
+Asignatura: Proyecto Diseño e Innovación Digital · Paralelo C1 · Profesor: Alejandro Paolini
+
+---
+
+## Contexto del proyecto
+
+### El problema
+
+La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de la Región de Coquimbo —especialmente la **Ruta 5 Norte** entre La Serena y Coquimbo— reduciendo la visibilidad a niveles críticos. El equipo denominó este fenómeno **"ceguera técnica"**: el conductor pierde por completo las referencias visuales de la calzada y los vehículos circundantes.
+
+**Datos clave:**
+- Chile registra más de 80.000 accidentes de tránsito al año (~1.500 fallecidos, ~4 por día)
+- El 60 % de las muertes ocurre en zonas rurales
+- En 2025 la Región de Coquimbo registró un **aumento del 62 %** en muertes por accidentes, superando los 100 fallecidos anuales
+- Los siniestros viales representan entre el 2 % y 3 % del PIB nacional
+
+**Los 3 factores críticos identificados (por orden de peligrosidad):**
+1. **Visibilidad nula** — pérdida total de referencias visuales de la vía y otros vehículos
+2. **Infraestructura deficiente** — sin señalética luminosa ni tecnología de guiado activo
+3. **Imprudencia al volante** — exceso de velocidad, camiones sin luces reglamentarias
+
+### Pregunta de innovación
+
+> *"¿Cómo podríamos reducir los riesgos asociados a la baja visibilidad en condiciones de niebla que afectan a los conductores y usuarios de las rutas en la Región de Coquimbo, para lograr una disminución en los accidentes de tránsito y mejorar la seguridad vial?"*
+
+### La solución
+
+Módulos LED autónomos instalados directamente sobre los **guardavías (barreras de contención)** de la carretera, alimentados por panel solar y batería, controlados por Arduino. El sistema se activa automáticamente al detectar condiciones de niebla sin intervención humana, guía al conductor mediante **efecto cascada** que señala la dirección de la vía, y comunica el nivel de riesgo mediante **codificación cromática**.
+
+Instalación **no invasiva**: se monta sobre infraestructura existente sin intervención mayor en la calzada.
+
+### Cliente objetivo
+
+**MOP** (Ministerio de Obras Públicas) + **CONASET** (Comisión Nacional de Seguridad de Tránsito)
+Representado por Alberto Escobar Poblete (Sec. Ejecutivo CONASET) y Joaquín Daga Kunze (Director General MOP).
+
+### Metas a 1 año
+
+| Métrica | Meta |
+|---|---|
+| Reducción de accidentes en tramos con niebla | −20 % |
+| Reducción de velocidad promedio bajo activación | −15 km/h |
+| Disminución de colisiones por alcance | −15 % |
+
+### Equipo
+
+| Integrante | Carrera | Rol |
+|---|---|---|
+| Diego Contreras | Ing. en TI | Desarrollador Técnico (Arduino) |
+| Nicolás Pérez | Ing. Civil Industrial | Coordinador de Proyecto |
+| Rosario Toro | Ing. Civil Industrial | Control de Calidad y Documentación |
+| Matías Olivares | Ing. Civil Industrial | Analista de Procesos |
+| Emiliana Castillo | Ing. Civil Industrial | Encargada de Negocios |
+| Vicente Pastén | Ing. Civil Industrial | Ayudante Técnico |
 
 ---
 
