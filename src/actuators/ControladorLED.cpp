@@ -15,7 +15,9 @@ void ControladorLED::begin() {
 
 void ControladorLED::actualizar(Estado estado, unsigned long ahora) {
     if (estado == Estado::NORMAL) {
-        apagar();
+        if (_estadoAnterior != Estado::NORMAL) {
+            apagar();
+        }
         return;
     }
 

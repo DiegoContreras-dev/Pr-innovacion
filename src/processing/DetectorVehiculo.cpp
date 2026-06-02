@@ -19,13 +19,13 @@ EstadoVehiculo DetectorVehiculo::evaluar() {
     if (_distanciaAnterior >= 0 && _tAnterior > 0) {
         float dt = (ahora - _tAnterior) / 1000.0f; // segundos
         if (dt > 0.0f) {
-            float velocidad = abs(distancia - _distanciaAnterior) / dt;
+            float velocidad = fabsf(distancia - _distanciaAnterior) / dt;
             if (velocidad <= VELOCIDAD_DETENIDO_CM_S) {
                 resultado = EstadoVehiculo::VEHICULO_DETENIDO;
             } else if (velocidad <= VELOCIDAD_LENTO_CM_S) {
                 resultado = EstadoVehiculo::VEHICULO_LENTO;
             } else {
-                resultado = EstadoVehiculo::VEHICULO_LENTO; // en rango y moviéndose
+                resultado = EstadoVehiculo::SIN_VEHICULO;
             }
         }
     } else {

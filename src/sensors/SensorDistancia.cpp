@@ -17,7 +17,7 @@ float SensorDistancia::leerDistanciaCm() {
     delayMicroseconds(10);
     digitalWrite(_pinTrig, LOW);
 
-    long duracion = pulseIn(_pinEcho, HIGH, 30000UL); // timeout 30 ms
+    long duracion = pulseIn(_pinEcho, HIGH, 30000UL); // timeout 30 ms (~514cm, cubre HC-SR04 completo)
     if (duracion == 0) return -1.0f;
 
     float distancia = (duracion * 0.0343f) / 2.0f;

@@ -1,24 +1,26 @@
 #include "logic/NivelRiesgo.h"
 
 NivelRiesgo::NivelRiesgo(DetectorNiebla& detNiebla, DetectorVehiculo& detVehiculo)
-    : _detNiebla(detNiebla), _detVehiculo(detVehiculo) {}
+    : _detNiebla(detNiebla), _detVehiculo(detVehiculo),
+      _ultimaNiebla(NivelNiebla::SIN_NIEBLA),
+      _ultimoVehiculo(EstadoVehiculo::SIN_VEHICULO) {}
 
 Estado NivelRiesgo::evaluar() {
-    NivelNiebla    niebla   = _detNiebla.evaluar();
-    EstadoVehiculo vehiculo = _detVehiculo.evaluar();
+    _ultimaNiebla   = _detNiebla.evaluar();
+    _ultimoVehiculo = _detVehiculo.evaluar();
 
     // Vehículo detenido: alerta roja siempre, con o sin niebla
-    if (vehiculo == EstadoVehiculo::VEHICULO_DETENIDO) {
+    if (_ultimoVehiculo == EstadoVehiculo::VEHICULO_DETENIDO) {
         return Estado::ALERTA_ROJA;
     }
 
     // Sin niebla y sin anomalías vehiculares → normal
-    if (niebla == NivelNiebla::SIN_NIEBLA) {
+    if (_ultimaNiebla == NivelNiebla::SIN_NIEBLA) {
         return Estado::NORMAL;
     }
 
     // Niebla activa + vehículo lento adelante → alerta amarilla
-    if (vehiculo == EstadoVehiculo::VEHICULO_LENTO) {
+    if (_ultimoVehiculo == EstadoVehiculo::VEHICULO_LENTO) {
         return Estado::ALERTA_AMARILLA;
     }
 
