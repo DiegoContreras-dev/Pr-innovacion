@@ -1,77 +1,125 @@
 #include <Arduino.h>
-#include "sensors/SensorHumedad.h"
-#include "sensors/SensorDistancia.h"
-#include "processing/DetectorNiebla.h"
-#include "processing/DetectorVehiculo.h"
-#include "logic/NivelRiesgo.h"
-#include "actuators/ControladorLED.h"
+#include <DHT.h>
 
-#define PIN_DHT   2
-#define PIN_TRIG  9
-#define PIN_ECHO  10
-#define PIN_LEDS  6
-#define NUM_LEDS  10
+// ── Pines ─────────────────────────────────────────────────────────────────────
+#define PIN_DHT      2
+#define PIN_TRIG     7
+#define PIN_ECHO     8
+#define PIN_VERDE    6
+#define PIN_AMARILLO 10
+#define PIN_ROJO     11
 
-SensorHumedad   sensorHum(PIN_DHT, DHT11);
-SensorDistancia sensorDist(PIN_TRIG, PIN_ECHO);
-DetectorNiebla   detNiebla(sensorHum);
-DetectorVehiculo detVehiculo(sensorDist);
-NivelRiesgo nivelRiesgo(detNiebla, detVehiculo);
-ControladorLED led(PIN_LEDS, NUM_LEDS);
+// ── Umbrales ──────────────────────────────────────────────────────────────────
+#define UMBRAL_HUM_CAMANCHACA  80.0f   // % → verdes ON
+#define UMBRAL_DIST_VEHICULO  150.0f   // cm → zona de detección
+#define UMBRAL_DETENIDO_CM      3.0f   // variación máxima para considerar detenido
+#define NUM_LECTURAS_HIST         5    // lecturas para detectar vehículo detenido
 
-static const unsigned long INTERVALO_MS = 2000;
-static unsigned long tUltima = 0;
-static Estado estadoActual = Estado::NORMAL;
+// ── Sensor DHT11 ──────────────────────────────────────────────────────────────
+DHT dht(PIN_DHT, DHT11);
 
+// ── Historial de distancias ───────────────────────────────────────────────────
+float historial[NUM_LECTURAS_HIST];
+uint8_t idxHist     = 0;
+bool    histLleno   = false;
+
+void resetHistorial() {
+    for (uint8_t i = 0; i < NUM_LECTURAS_HIST; i++) historial[i] = 0.0f;
+    idxHist   = 0;
+    histLleno = false;
+}
+
+void agregarLectura(float dist) {
+    historial[idxHist] = dist;
+    idxHist = (idxHist + 1) % NUM_LECTURAS_HIST;
+    if (idxHist == 0) histLleno = true;
+}
+
+bool vehiculoDetenido() {
+    if (!histLleno) return false;
+    float minD = historial[0], maxD = historial[0];
+    for (uint8_t i = 1; i < NUM_LECTURAS_HIST; i++) {
+        if (historial[i] < minD) minD = historial[i];
+        if (historial[i] > maxD) maxD = historial[i];
+    }
+    return (maxD - minD) <= UMBRAL_DETENIDO_CM;
+}
+
+// ── Lectura HC-SR04 ───────────────────────────────────────────────────────────
+float leerDistanciaCm() {
+    digitalWrite(PIN_TRIG, LOW);
+    delayMicroseconds(2);
+    digitalWrite(PIN_TRIG, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(PIN_TRIG, LOW);
+    long dur = pulseIn(PIN_ECHO, HIGH, 30000UL);
+    if (dur == 0) return -1.0f;
+    return (dur * 0.0343f) / 2.0f;
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(9600);
-    sensorHum.begin();
-    sensorDist.begin();
-    led.begin();
-    Serial.println(F("=== Sistema Camanchaca ==="));
+
+    pinMode(PIN_TRIG,     OUTPUT);
+    pinMode(PIN_ECHO,     INPUT);
+    pinMode(PIN_VERDE,    OUTPUT);
+    pinMode(PIN_AMARILLO, OUTPUT);
+    pinMode(PIN_ROJO,     OUTPUT);
+
+    digitalWrite(PIN_VERDE,    LOW);
+    digitalWrite(PIN_AMARILLO, LOW);
+    digitalWrite(PIN_ROJO,     LOW);
+
+    dht.begin();
+    resetHistorial();
+
+    Serial.println(F("=== Sistema Camanchaca UCN ==="));
     delay(2000);
 }
 
+// ── Loop ──────────────────────────────────────────────────────────────────────
 void loop() {
-    unsigned long ahora = millis();
+    // --- DHT11: humedad → LEDs verdes ---
+    float hum = dht.readHumidity();
 
-    if (ahora - tUltima >= INTERVALO_MS) {
-        tUltima = ahora;
-        estadoActual = nivelRiesgo.evaluar();
-
-        float hum  = sensorHum.leerHumedad();
-        float dist = sensorDist.leerDistanciaCm();
-
+    if (isnan(hum)) {
+        digitalWrite(PIN_VERDE, LOW);
+        Serial.print(F("Hum:ERR"));
+    } else {
+        digitalWrite(PIN_VERDE, hum > UMBRAL_HUM_CAMANCHACA ? HIGH : LOW);
         Serial.print(F("Hum:"));
-        if (hum < 0) Serial.print(F("ERR"));
-        else { Serial.print(hum, 0); Serial.print(F("%")); }
+        Serial.print(hum, 0);
+        Serial.print(F("%"));
+    }
 
-        Serial.print(F("  Dist:"));
-        if (dist < 0) Serial.print(F("---"));
-        else { Serial.print(dist, 1); Serial.print(F("cm")); }
+    // --- HC-SR04: distancia → LEDs amarillo/rojo ---
+    float dist = leerDistanciaCm();
 
-        Serial.print(F("  Niebla:"));
-        switch (nivelRiesgo.ultimaNiebla()) {
-            case NivelNiebla::SIN_NIEBLA:   Serial.print(F("SIN"));   break;
-            case NivelNiebla::NIEBLA_LEVE:  Serial.print(F("LEVE"));  break;
-            case NivelNiebla::NIEBLA_DENSA: Serial.print(F("DENSA")); break;
-        }
+    Serial.print(F("  Dist:"));
+    if (dist < 0) Serial.print(F("---"));
+    else { Serial.print(dist, 1); Serial.print(F("cm")); }
 
-        Serial.print(F("  Vehiculo:"));
-        switch (nivelRiesgo.ultimoVehiculo()) {
-            case EstadoVehiculo::SIN_VEHICULO:      Serial.print(F("SIN"));      break;
-            case EstadoVehiculo::VEHICULO_LENTO:    Serial.print(F("LENTO"));    break;
-            case EstadoVehiculo::VEHICULO_DETENIDO: Serial.print(F("DETENIDO")); break;
-        }
+    if (dist < 0 || dist > UMBRAL_DIST_VEHICULO) {
+        // Fuera de rango → sin vehículo, resetear historial
+        resetHistorial();
+        digitalWrite(PIN_AMARILLO, LOW);
+        digitalWrite(PIN_ROJO,     LOW);
+        Serial.println(F("  -> SIN VEHICULO"));
+    } else {
+        // Vehículo en zona → acumular lectura y decidir
+        agregarLectura(dist);
 
-        Serial.print(F("  -> "));
-        switch (estadoActual) {
-            case Estado::NORMAL:          Serial.println(F("NORMAL"));          break;
-            case Estado::NIEBLA:          Serial.println(F("NIEBLA"));          break;
-            case Estado::ALERTA_AMARILLA: Serial.println(F("ALERTA AMARILLA")); break;
-            case Estado::ALERTA_ROJA:     Serial.println(F("ALERTA ROJA"));     break;
+        if (vehiculoDetenido()) {
+            digitalWrite(PIN_AMARILLO, LOW);
+            digitalWrite(PIN_ROJO,     HIGH);
+            Serial.println(F("  -> DETENIDO [ROJO]"));
+        } else {
+            digitalWrite(PIN_AMARILLO, HIGH);
+            digitalWrite(PIN_ROJO,     LOW);
+            Serial.println(F("  -> EN MOVIMIENTO [AMARILLO]"));
         }
     }
 
-    led.actualizar(estadoActual, ahora);
+    delay(200);
 }
