@@ -1,8 +1,8 @@
-# Sistema Camanchaca — Arduino
+# Sistema de Iluminación Vial Inteligente — Camanchaca (UCN)
 
-**Sistema de Iluminación Vial Inteligente de Guiado Activo**
-Grupo 5 "Los Camanchacas" / "BetaMentes" — Universidad Católica del Norte
-Asignatura: Proyecto Diseño e Innovación Digital · Paralelo C1 · Profesor: Alejandro Paolini
+**Grupo 5 "Los Camanchacas" / "BetaMentes"**  
+Universidad Católica del Norte — Proyecto Diseño e Innovación Digital · Paralelo C1  
+Profesor: Alejandro Paolini
 
 ---
 
@@ -13,15 +13,14 @@ Asignatura: Proyecto Diseño e Innovación Digital · Paralelo C1 · Profesor: A
 La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de la Región de Coquimbo —especialmente la **Ruta 5 Norte** entre La Serena y Coquimbo— reduciendo la visibilidad a niveles críticos. El equipo denominó este fenómeno **"ceguera técnica"**: el conductor pierde por completo las referencias visuales de la calzada y los vehículos circundantes.
 
 **Datos clave:**
-- Chile registra más de 80.000 accidentes de tránsito al año (~1.500 fallecidos, ~4 por día)
-- El 60 % de las muertes ocurre en zonas rurales
-- En 2025 la Región de Coquimbo registró un **aumento del 62 %** en muertes por accidentes, superando los 100 fallecidos anuales
-- Los siniestros viales representan entre el 2 % y 3 % del PIB nacional
+- Chile registra más de 80.000 accidentes de tránsito al año (~1.500 fallecidos)
+- El 60% de las muertes ocurre en zonas rurales
+- En 2025 la Región de Coquimbo registró un **aumento del 62%** en muertes por accidentes, superando los 100 fallecidos anuales
 
-**Los 3 factores críticos identificados (por orden de peligrosidad):**
-1. **Visibilidad nula** — pérdida total de referencias visuales de la vía y otros vehículos
-2. **Infraestructura deficiente** — sin señalética luminosa ni tecnología de guiado activo
-3. **Imprudencia al volante** — exceso de velocidad, camiones sin luces reglamentarias
+**Los 3 factores críticos identificados:**
+1. **Visibilidad nula** — pérdida total de referencias visuales de la vía
+2. **Infraestructura deficiente** — sin señalética luminosa ni guiado activo
+3. **Imprudencia al volante** — exceso de velocidad bajo condiciones de niebla
 
 ### Pregunta de innovación
 
@@ -29,22 +28,13 @@ La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de l
 
 ### La solución
 
-Módulos LED autónomos instalados directamente sobre los **guardavías (barreras de contención)** de la carretera, alimentados por panel solar y batería, controlados por Arduino. El sistema se activa automáticamente al detectar condiciones de niebla sin intervención humana, guía al conductor mediante **efecto cascada** que señala la dirección de la vía, y comunica el nivel de riesgo mediante **codificación cromática**.
+Módulos LED autónomos instalados sobre los **guardavías** de la carretera, controlados por Arduino UNO. El sistema detecta humedad ambiental (camanchaca) y presencia/estado de vehículos, comunicando el nivel de riesgo mediante **codificación cromática**:
 
-Instalación **no invasiva**: se monta sobre infraestructura existente sin intervención mayor en la calzada.
-
-### Cliente objetivo
-
-**MOP** (Ministerio de Obras Públicas) + **CONASET** (Comisión Nacional de Seguridad de Tránsito)
-Representado por Alberto Escobar Poblete (Sec. Ejecutivo CONASET) y Joaquín Daga Kunze (Director General MOP).
-
-### Metas a 1 año
-
-| Métrica | Meta |
-|---|---|
-| Reducción de accidentes en tramos con niebla | −20 % |
-| Reducción de velocidad promedio bajo activación | −15 km/h |
-| Disminución de colisiones por alcance | −15 % |
+| Color | Significado |
+|-------|-------------|
+| Verde | Camanchaca activa — visibilidad reducida |
+| Amarillo | Vehículo en movimiento detectado en la zona |
+| Rojo | Vehículo detenido — peligro en la vía |
 
 ### Equipo
 
@@ -61,130 +51,64 @@ Representado por Alberto Escobar Poblete (Sec. Ejecutivo CONASET) y Joaquín Dag
 
 ## Hardware
 
-| Componente | Modelo | Pin Arduino |
+### Componentes y pines
+
+| Componente | Descripción | Pin Arduino |
 |---|---|---|
-| Sensor humedad/temp | DHT11 o DHT22 | D4 |
-| Fotoresistencia | LDR | A0 |
-| Sensor ultrasonido | HC-SR04 | TRIG→D9, ECHO→D10 |
-| Tira LED | NeoPixel (10 LEDs) | D6 |
+| DHT11 (módulo 3 pines) | Sensor de humedad | DATA → D2 |
+| HC-SR04 | Sensor ultrasónico de distancia | TRIG → D7, ECHO → D8 |
+| 3× LED verde (paralelo) | Indicador de camanchaca | D6 (470Ω c/u) |
+| 3× LED amarillo (paralelo) | Vehículo en movimiento | D10 (470Ω c/u) |
+| 3× LED rojo (paralelo) | Vehículo detenido | D11 (470Ω c/u) |
+
+### Esquema de conexiones
+
+```
+Arduino UNO
+│
+├── D2  ──── DHT11 DATA
+├── D6  ──── [470Ω] ──── LED verde (+) × 3  ──── GND
+├── D7  ──── HC-SR04 TRIG
+├── D8  ──── HC-SR04 ECHO
+├── D10 ──── [470Ω] ──── LED amarillo (+) × 3 ── GND
+├── D11 ──── [470Ω] ──── LED rojo (+) × 3 ────── GND
+│
+├── 5V  ──── DHT11 VCC, HC-SR04 VCC
+└── GND ──── DHT11 GND, HC-SR04 GND, todos los LEDs (cátodo)
+```
+
+> **Nota DHT11:** El módulo KY-015 (3 pines) tiene el orden S – V+ – G (señal primero). No confundir con el sensor bare (4 pines).
+
+> **Nota HC-SR04:** Requiere alimentación a **5V** obligatoriamente. El pin ECHO entrega 5V, compatible con Arduino UNO directamente.
 
 ---
 
-## Configuración del entorno (CachyOS / Arch)
+## Lógica de funcionamiento
 
-### 1. Instalar extensión PlatformIO en VS Code
+### DHT11 → LEDs verdes (independiente)
 
-```
-code --install-extension platformio.platformio-ide
-```
+| Humedad | LEDs verdes |
+|---------|-------------|
+| > 80%   | ON — camanchaca detectada |
+| ≤ 80%   | OFF |
 
-La extensión descarga automáticamente el toolchain AVR y las librerías declaradas en `platformio.ini`.
+### HC-SR04 → LEDs amarillo y rojo (mutuamente exclusivos)
 
-### 2. Instalar PlatformIO Core (CLI)
+| Condición | Amarillo | Rojo |
+|-----------|----------|------|
+| Nada en rango (> 150 cm o sin eco) | OFF | OFF |
+| Objeto < 150 cm, en movimiento | ON | OFF |
+| Objeto < 150 cm, detenido (≤ 3 cm variación en 5 lecturas seguidas) | OFF | ON |
 
-```bash
-pip install --user --break-system-packages platformio
-```
+**Detección de vehículo detenido:** el sistema acumula las últimas 5 lecturas de distancia (1 segundo a 200 ms/lectura). Si la diferencia entre la máxima y la mínima es ≤ 3 cm, el objeto se clasifica como detenido. El historial se reinicia cuando el objeto sale del rango de 150 cm.
 
-Verifica:
+### El verde es independiente
 
-```bash
-pio --version
-# PlatformIO Core, version 6.1.19
-```
-
-### 3. Permisos para el puerto USB
-
-```bash
-sudo usermod -aG uucp $USER
-```
-
-Cierra sesión y vuelve a entrar. Sin esto el upload falla con `Permission denied` en `/dev/ttyACM0`.
-
-### 4. Verificar que el Arduino es detectado
-
-Con el Arduino conectado por USB:
-
-```bash
-ls /dev/ttyACM*
-# /dev/ttyACM0
-```
-
----
-
-## Uso desde VS Code
-
-Al abrir la carpeta del proyecto, la barra inferior de PlatformIO muestra:
-
-| Botón | Acción |
-|---|---|
-| ✓ Build | Compila el proyecto |
-| → Upload | Sube el firmware al Arduino |
-| Monitor (enchufes) | Abre el monitor serial a 9600 baud |
-
-La primera compilación descarga el toolchain AVR y las 3 librerías (~200 MB).
-
-## Uso desde terminal
-
-```bash
-cd Pr-innovacion
-
-pio run                  # compilar
-pio run --target upload  # subir al Arduino
-pio device monitor       # monitor serial (Ctrl+C para salir)
-```
-
----
-
-## Funcionamiento
-
-El sistema evalúa el estado cada 500 ms y actualiza los LEDs en cada ciclo del `loop()`.
-
-### Flujo de datos
+Los LEDs verdes pueden estar encendidos simultáneamente con amarillo o rojo.
 
 ```
-DHT11/22 ──┐
-            ├─→ DetectorNiebla ──┐
-LDR ────────┘                    ├─→ NivelRiesgo → ControladorLED
-                                 │
-HC-SR04 ──────→ DetectorVehiculo─┘
+Ejemplo: camanchaca + vehículo detenido → verde ON + rojo ON
 ```
-
-### Máquina de estados
-
-| Estado | Color LEDs | Condición de activación |
-|---|---|---|
-| `NORMAL` | Apagado | Sin niebla, sin vehículos anómalos |
-| `NIEBLA` | Azul | Humedad ≥ umbral leve, sin vehículos |
-| `ALERTA_AMARILLA` | Amarillo | Niebla activa + vehículo lento detectado |
-| `ALERTA_ROJA` | Rojo | Vehículo detenido en la vía (con o sin niebla) |
-
-La prioridad es: `ALERTA_ROJA` > `ALERTA_AMARILLA` > `NIEBLA` > `NORMAL`.
-
-### Detección de niebla (`DetectorNiebla`)
-
-Combina dos señales:
-
-- **Humedad** (DHT): `NIEBLA_LEVE` si ≥ umbral leve, `NIEBLA_DENSA` si ≥ umbral denso **y** luz baja simultáneamente.
-- **Luminosidad** (LDR, 0–1023): valor bajo indica visibilidad reducida.
-
-### Detección de vehículo (`DetectorVehiculo`)
-
-El HC-SR04 mide distancia cada ciclo. La velocidad se estima como:
-
-```
-velocidad = |distancia_actual - distancia_anterior| / dt
-```
-
-- `velocidad ≤ DETENIDO_CM_S` → `VEHICULO_DETENIDO`
-- `velocidad ≤ LENTO_CM_S` → `VEHICULO_LENTO`
-- Fuera de rango → `SIN_VEHICULO`
-
-### Efecto cascada (`EfectoCascada`)
-
-Cada 80 ms avanza un LED en la tira. El LED activo luce al 100% de brillo; los dos anteriores a 50% y 20%, generando un rastro visual que simula dirección de movimiento en la vía.
-
-Al cambiar de estado el rastro se reinicia desde cero para evitar mezcla de colores.
 
 ---
 
@@ -192,40 +116,115 @@ Al cambiar de estado el rastro se reinicia desde cero para evitar mezcla de colo
 
 ```
 Pr-innovacion/
-├── platformio.ini
+├── platformio.ini              ← configuración PlatformIO
 ├── src/
-│   ├── main.cpp
+│   └── main.cpp               ← código principal (único archivo de lógica)
+├── include/                   ← headers de la arquitectura por capas (referencia)
 │   ├── sensors/
-│   │   ├── SensorHumedad.h/.cpp      ← DHT11/22: humedad y temperatura
-│   │   ├── SensorLuz.h/.cpp          ← LDR: luminosidad raw (0–1023)
-│   │   └── SensorDistancia.h/.cpp    ← HC-SR04: distancia en cm
+│   │   ├── SensorHumedad.h
+│   │   └── SensorDistancia.h
 │   ├── processing/
-│   │   ├── DetectorNiebla.h/.cpp     ← humedad + luz → NivelNiebla
-│   │   └── DetectorVehiculo.h/.cpp   ← distancia → EstadoVehiculo
+│   │   ├── DetectorNiebla.h
+│   │   └── DetectorVehiculo.h
 │   ├── logic/
-│   │   ├── EstadoSistema.h           ← enum Estado
-│   │   └── NivelRiesgo.h/.cpp        ← máquina de estados principal
+│   │   ├── EstadoSistema.h
+│   │   └── NivelRiesgo.h
 │   └── actuators/
-│       ├── EfectoCascada.h/.cpp      ← animación NeoPixel con rastro
-│       └── ControladorLED.h/.cpp     ← color por estado + ciclo de update
-├── include/                          ← headers compartidos
-├── ARQUITECTURA.md                   ← diagrama de capas detallado
-└── README.md
+│       └── ControladorLED.h
+├── README.md                  ← este archivo
+└── ARQUITECTURA.md            ← diagrama de capas detallado
+```
+
+---
+
+## Dependencias (platformio.ini)
+
+```ini
+[env:uno]
+platform  = atmelavr
+board     = uno
+framework = arduino
+monitor_speed = 9600
+
+upload_port  = /dev/ttyUSB0   ; CH340 en Linux
+monitor_port = /dev/ttyUSB0
+
+lib_deps =
+    adafruit/DHT sensor library@^1.4.6
+    adafruit/Adafruit Unified Sensor@^1.1.14
+```
+
+> En Linux (CachyOS/Arch), el chip USB-serial CH340 aparece en `/dev/ttyUSB0`. Si aparece como `/dev/ttyACM0`, actualizar `upload_port` y `monitor_port` en `platformio.ini`.
+
+---
+
+## Configuración del entorno (CachyOS / Arch Linux)
+
+### 1. Instalar PlatformIO
+
+```bash
+pip install --user --break-system-packages platformio
+```
+
+O instalar la extensión PlatformIO en VS Code.
+
+### 2. Permisos de puerto USB
+
+```bash
+sudo usermod -aG uucp $USER
+# Cerrar sesión y volver a entrar
+```
+
+### 3. Verificar detección del Arduino
+
+```bash
+ls /dev/ttyUSB*   # CH340 → /dev/ttyUSB0
+ls /dev/ttyACM*   # ATmega16U2 → /dev/ttyACM0
+```
+
+---
+
+## Uso
+
+```bash
+# Compilar
+pio run
+
+# Compilar y subir al Arduino
+pio run --target upload
+
+# Monitor serial (9600 baud, Ctrl+C para salir)
+pio device monitor
 ```
 
 ---
 
 ## Monitor serial
 
-Al correr `pio device monitor` el Arduino imprime el estado actual cada 500 ms:
+Cada 200 ms el Arduino imprime una línea con el estado de ambos sensores:
 
 ```
-Sistema Camanchaca iniciado.
-Estado: NORMAL
-Estado: NORMAL
-Estado: NIEBLA
-Estado: ALERTA_AMARILLA
-Estado: ALERTA_ROJA
+=== Sistema Camanchaca UCN ===
+Hum:65%  Dist:---  -> SIN VEHICULO
+Hum:65%  Dist:83.4cm  -> EN MOVIMIENTO [AMARILLO]
+Hum:65%  Dist:83.1cm  -> DETENIDO [ROJO]
+Hum:82%  Dist:---  -> SIN VEHICULO
 ```
 
-Velocidad: 9600 baud.
+| Campo | Descripción |
+|-------|-------------|
+| `Hum:XX%` | Humedad relativa leída por DHT11. `ERR` si el sensor falla. |
+| `Dist:XX.Xcm` | Distancia medida por HC-SR04. `---` si no hay eco (fuera de rango). |
+| `-> ESTADO` | Estado actual del sistema para los LEDs amarillo/rojo. |
+
+---
+
+## Metas del proyecto
+
+| Métrica | Meta |
+|---|---|
+| Reducción de accidentes en tramos con niebla | −20% |
+| Reducción de velocidad promedio bajo activación | −15 km/h |
+| Disminución de colisiones por alcance | −15% |
+
+**Clientes objetivo:** MOP (Ministerio de Obras Públicas) y CONASET (Comisión Nacional de Seguridad de Tránsito).
