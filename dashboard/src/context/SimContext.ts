@@ -11,7 +11,6 @@ export interface SimContextValue {
   sensorLogs: SensorLogEntry[]
   history:    { hum: HistoryBuffer; dist: HistoryBuffer }
   wsStatus:   ConnectionStatus
-  wsSource:   'hardware' | 'simulation'
   wsHasData:  boolean
 }
 

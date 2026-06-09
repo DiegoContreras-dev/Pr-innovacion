@@ -18,7 +18,7 @@ function nowTime() {
 }
 
 interface TrackRef {
-  hum: number; dist: number
+  hum: number; temp: number; dist: number
   lastTs: number; uiTimer: number; serialTimer: number; histTimer: number; sensorTimer: number
   humHistory: HistoryBuffer; distHistory: HistoryBuffer; histPtr: number
   logId: number; alertId: number; sensorLogId: number
@@ -30,7 +30,7 @@ interface TrackRef {
 
 export function useSimulation() {
   const track = useRef<TrackRef>({
-    hum: 0, dist: 0,
+    hum: 0, temp: 0, dist: 0,
     lastTs: 0, uiTimer: 0, serialTimer: 0, histTimer: 0, sensorTimer: 0,
     humHistory:  new Array(HIST_LEN).fill(null),
     distHistory: new Array(HIST_LEN).fill(null),
@@ -49,7 +49,6 @@ export function useSimulation() {
   const prevArduinoConn    = useRef<boolean | null>(null)
 
   const [wsStatus,  setWsStatus]  = useState<ConnectionStatus>('connecting')
-  const [wsSource,  setWsSource]  = useState<'hardware' | 'simulation'>('simulation')
   const [wsHasData, setWsHasData] = useState(false)
 
   // ── Estado UI ────────────────────────────────────────────────────────────────
@@ -57,7 +56,6 @@ export function useSimulation() {
     sensors:   { hum: 0, dist: 0, temp: 0 },
     leds:      { green: false, yellow: false, red: false },
     riskLevel: 'standby',
-    autoMode:  false,
   })
 
   const [logs, setLogs] = useState<LogEntry[]>([
@@ -115,7 +113,6 @@ export function useSimulation() {
         try {
           const data: BridgeMessage = JSON.parse(e.data as string)
           bridgeMsg.current = data
-          setWsSource(data.source)
           setWsHasData(data.connected === true)
           // Notificar al cambiar estado del Arduino
           if (prevArduinoConn.current !== data.connected) {
@@ -160,8 +157,10 @@ export function useSimulation() {
 
       // Valores del bridge — null significa sensor sin lectura válida
       const hum  = bd.hum  ?? t.hum   // mantiene último valor si DHT11 da ERR
+      const temp = bd.temp ?? t.temp  // mantiene último valor si DHT11 da ERR
       const dist = bd.dist ?? t.dist  // mantiene último valor si HC-SR04 sin eco
       t.hum  = hum
+      t.temp = temp
       t.dist = dist
       t.ledGreen  = bd.ledGreen
       t.ledYellow = bd.ledYellow
@@ -193,9 +192,11 @@ export function useSimulation() {
       t.sensorTimer += dt
       if (t.sensorTimer >= 2000) {
         t.sensorTimer = 0
-        const humType: SensorLogEntry['type']  = hum > 80 ? 'warn' : 'normal'
+        const humType:  SensorLogEntry['type'] = hum  > 80 ? 'warn' : 'normal'
+        const tempType: SensorLogEntry['type'] = temp > 30 ? 'warn' : 'normal'
         const distType: SensorLogEntry['type'] = t.ledRed ? 'err' : t.ledYellow ? 'warn' : 'normal'
-        appendSensorLog('hum',  `${hum.toFixed(0)}%`,  'Lectura DHT11 — Humedad ambiental', humType)
+        appendSensorLog('hum',  `${hum.toFixed(0)}%`,               'Lectura DHT11 — Humedad ambiental',    humType)
+        appendSensorLog('temp', temp > 0 ? `${temp.toFixed(1)}°C` : '---', 'Lectura DHT11 — Temperatura ambiental', tempType)
         appendSensorLog('dist', dist > 0 ? `${dist.toFixed(1)}cm` : '---',
           t.ledRed ? 'HC-SR04 — Vehículo DETENIDO' : t.ledYellow ? 'HC-SR04 — Vehículo en movimiento' : 'HC-SR04 — Sin vehículo en zona', distType)
       }
@@ -205,19 +206,24 @@ export function useSimulation() {
       if (t.uiTimer >= 200) {
         t.uiTimer = 0
         setUiState({
-          sensors:   { hum, dist, temp: 0 },
+          sensors:   { hum, temp, dist },
           leds:      { green: t.ledGreen, yellow: t.ledYellow, red: t.ledRed },
           riskLevel,
-          autoMode:  false,
         })
       }
 
-      // Monitor serial (500ms) — usa el raw del Arduino directamente
+      // Monitor serial (500ms)
       t.serialTimer += dt
       if (t.serialTimer >= 500) {
         t.serialTimer = 0
-        const logType: LogEntry['type'] = t.ledRed ? 'err' : t.ledYellow ? 'warn' : 'normal'
-        appendLog(bd.raw, logType)
+        const logType:  LogEntry['type'] = t.ledRed ? 'err' : t.ledYellow ? 'warn' : 'normal'
+        const humStr  = hum  > 0 ? `${hum.toFixed(0)}%`   : '---'
+        const tempStr = temp > 0 ? `${temp.toFixed(1)}°C`  : '---'
+        const distStr = dist > 0 ? `${dist.toFixed(1)}cm`  : '---'
+        const estado  = t.ledRed    ? '-> DETENIDO [ROJO]'
+                      : t.ledYellow ? '-> EN MOVIMIENTO [AMARILLO]'
+                      :               '-> SIN VEHICULO'
+        appendLog(`Hum:${humStr}  Temp:${tempStr}  Dist:${distStr}  ${estado}`, logType)
       }
 
       // Historial (1s)
@@ -237,5 +243,5 @@ export function useSimulation() {
     return () => cancelAnimationFrame(rafId)
   }, [appendLog, appendAlert, appendSensorLog])
 
-  return { uiState, logs, alerts, sensorLogs, history, wsStatus, wsSource, wsHasData }
+  return { uiState, logs, alerts, sensorLogs, history, wsStatus, wsHasData }
 }

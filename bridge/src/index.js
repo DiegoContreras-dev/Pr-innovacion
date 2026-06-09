@@ -25,11 +25,12 @@ function broadcast(payload) {
 }
 
 // ── Parser de línea serial del Arduino ───────────────────────────────────────
-// Formato Arduino: "Hum:73%  Dist:124.5cm  -> EN MOVIMIENTO [AMARILLO]"
+// Formato Arduino: "Hum:73%  Temp:22.5C  Dist:4.2cm  -> EN MOVIMIENTO [AMARILLO]"
 // Solo se brodcastean líneas que contengan datos de sensor (Hum: + Dist:).
 // La línea de inicio "=== Sistema Camanchaca UCN ===" se descarta.
 function parseLine(line) {
   const humMatch  = line.match(/Hum:([\d.]+)%/)
+  const tempMatch = line.match(/Temp:([\d.]+)C/)
   const distMatch = line.match(/Dist:([\d.]+)cm/)
 
   // Descartar líneas sin datos de sensor (ej: línea de inicio "=== Sistema ===")
@@ -38,10 +39,8 @@ function parseLine(line) {
   if (!isSensorLine) return null
 
   const hum  = humMatch  ? parseFloat(humMatch[1]) : null
-  // null cuando DHT11 falla (Hum:ERR); el dashboard lo muestra como inválido
-
+  const temp = tempMatch ? parseFloat(tempMatch[1]) : null
   const dist = distMatch ? parseFloat(distMatch[1]) : null
-  // null cuando HC-SR04 no tiene eco (Dist:---); el dashboard lo muestra como ---
 
   // LED states — leídos directamente del texto que imprime el Arduino.
   // El Arduino ya tomó la decisión; el bridge solo la re-publica.
@@ -56,22 +55,20 @@ function parseLine(line) {
 
   return {
     connected: true,
-    hum, dist,
+    hum, temp, dist,
     ledGreen, ledYellow, ledRed,
     riskLevel,
-    raw:    line.trim(),
-    source: 'hardware',
-    ts:     Date.now(),
+    raw: line.trim(),
+    ts:  Date.now(),
   }
 }
 
 const HEARTBEAT_PAYLOAD = {
   connected: false,
-  hum: null, dist: null,
+  hum: null, temp: null, dist: null,
   ledGreen: false, ledYellow: false, ledRed: false,
   riskLevel: 'standby',
   raw: '',
-  source: 'hardware',
 }
 
 let heartbeatInterval = null

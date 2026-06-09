@@ -45,7 +45,7 @@ La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de l
 │  HC-SR04 ──→ D7/D8 ┘     │                                      │
 │                            │                                     │
 │    D6  → LED Verde         │ Serial 9600 baud                   │
-│    D10 → LED Amarillo      │ "Hum:73%  Dist:124.5cm  -> ..."    │
+│    D10 → LED Amarillo      │ "Hum:73%  Temp:22.5C  Dist:3.4cm  -> ..."  │
 │    D11 → LED Rojo          │                                     │
 └───────────────────────────┼─────────────────────────────────────┘
                             │
@@ -54,8 +54,8 @@ La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de l
 │                    bridge/src/index.js                           │
 │                                                                  │
 │  • Lee el puerto serie del Arduino (serialport v12)             │
-│  • Parsea cada línea y deriva: hum, dist, lux, LEDs, riskLevel  │
-│  • Si no hay hardware → heartbeat "connected: false" cada 3s      │
+│  • Parsea cada línea y extrae: hum, temp, dist, LEDs, riskLevel │
+│  • Si no hay hardware → heartbeat "connected: false" cada 3s    │
 │  • Emite JSON por WebSocket en :3001                             │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ ws://bridge:3001
@@ -100,27 +100,27 @@ Pr-innovacion/
 ### 1. Lectura de sensores (Arduino, cada 200 ms)
 
 ```
-DHT11 → dht.readHumidity()
+DHT11 → dht.readHumidity() + dht.readTemperature()
            │
            ├─ hum > 80% → LED Verde ON  (camanchaca detectada)
            └─ hum ≤ 80% → LED Verde OFF
 
-HC-SR04 → pulseIn() → distancia en cm
+HC-SR04 → pulseIn() → distancia en cm  (timeout 600 µs ≈ 10 cm máximo)
            │
-           ├─ dist > 150 cm o sin eco → sin vehículo → LEDs OFF + reset historial
+           ├─ dist < 2 cm o dist > 5 cm → sin vehículo → LEDs OFF + reset historial
            │
-           └─ dist ≤ 150 cm → acumula últimas 5 lecturas
+           └─ 2 cm ≤ dist ≤ 5 cm → acumula últimas 5 lecturas
                                │
-                               ├─ (max-min) > 3 cm → EN MOVIMIENTO → LED Amarillo ON
-                               └─ (max-min) ≤ 3 cm → DETENIDO     → LED Rojo ON
+                               ├─ (max-min) > 1 cm → EN MOVIMIENTO → LED Amarillo ON
+                               └─ (max-min) ≤ 1 cm → DETENIDO     → LED Rojo ON
 ```
 
 ### 2. Salida serial (9600 baud, cada 200 ms)
 
 ```
-Hum:73%  Dist:124.5cm  -> EN MOVIMIENTO [AMARILLO]
-Hum:85%  Dist:83.1cm   -> DETENIDO [ROJO]
-Hum:60%  Dist:---      -> SIN VEHICULO
+Hum:73%  Temp:22.5C  Dist:124.5cm  -> EN MOVIMIENTO [AMARILLO]
+Hum:85%  Temp:21.0C  Dist:83.1cm   -> DETENIDO [ROJO]
+Hum:60%  Temp:23.0C  Dist:---      -> SIN VEHICULO
 ```
 
 ### 3. Bridge (Node.js)
@@ -128,8 +128,7 @@ Hum:60%  Dist:---      -> SIN VEHICULO
 ```
 Línea serial → parseLine()
                  │
-                 ├─ Extrae hum, dist
-                 ├─ Deriva lux = max(10, 1000 − hum × 9)
+                 ├─ Extrae hum, temp, dist
                  ├─ Lee estado LED del texto ("EN MOVIMIENTO", "DETENIDO")
                  ├─ Calcula riskLevel: standby | normal | precaucion | alerta
                  └─ broadcast JSON → todos los clientes WebSocket conectados
@@ -141,13 +140,13 @@ Línea serial → parseLine()
 {
   "connected": true,
   "hum": 73,
+  "temp": 22.5,
   "dist": 124.5,
-  "lux": 343,
   "ledGreen": false,
   "ledYellow": true,
   "ledRed": false,
   "riskLevel": "precaucion",
-  "raw": "Hum:73%  Dist:124.5cm  -> EN MOVIMIENTO [AMARILLO]",
+  "raw": "Hum:73%  Temp:22.5C  Dist:124.5cm  -> EN MOVIMIENTO [AMARILLO]",
   "source": "hardware",
   "ts": 1717800000000
 }
@@ -156,7 +155,7 @@ Línea serial → parseLine()
 Cuando no hay Arduino, el bridge emite cada 3 s:
 
 ```json
-{ "connected": false, "hum": null, "dist": null, "lux": null, "ledGreen": false, "ledYellow": false, "ledRed": false, "riskLevel": "standby", "raw": "", "source": "hardware", "ts": 1717800000000 }
+{ "connected": false, "hum": null, "temp": null, "dist": null, "ledGreen": false, "ledYellow": false, "ledRed": false, "riskLevel": "standby", "raw": "", "source": "hardware", "ts": 1717800000000 }
 ```
 
 El campo `connected: false` hace que el dashboard pause el procesamiento de datos y alertas sin desconectar el WebSocket.
@@ -453,17 +452,17 @@ Cada 200 ms el Arduino imprime una línea:
 
 ```
 === Sistema Camanchaca UCN ===
-Hum:65%  Dist:---      -> SIN VEHICULO
-Hum:65%  Dist:83.4cm   -> EN MOVIMIENTO [AMARILLO]
-Hum:65%  Dist:83.1cm   -> DETENIDO [ROJO]
-Hum:82%  Dist:---      -> SIN VEHICULO
-Hum:82%  Dist:91.2cm   -> EN MOVIMIENTO [AMARILLO]
-Hum:ERR  Dist:---      -> SIN VEHICULO
+Hum:65%  Temp:22.0C  Dist:---     -> SIN VEHICULO
+Hum:65%  Temp:22.0C  Dist:3.4cm  -> EN MOVIMIENTO [AMARILLO]
+Hum:65%  Temp:22.1C  Dist:3.1cm  -> DETENIDO [ROJO]
+Hum:82%  Temp:21.5C  Dist:---    -> SIN VEHICULO
+Hum:ERR  Temp:ERR    Dist:---    -> SIN VEHICULO
 ```
 
 | Campo | Descripción |
 |---|---|
 | `Hum:XX%` | Humedad relativa del DHT11. `ERR` si el sensor falla. |
+| `Temp:XX.XC` | Temperatura en °C del DHT11. `ERR` si el sensor falla. |
 | `Dist:XX.Xcm` | Distancia del HC-SR04. `---` si no hay eco (fuera de rango). |
 | `-> ESTADO` | Estado actual: `SIN VEHICULO`, `EN MOVIMIENTO [AMARILLO]`, `DETENIDO [ROJO]` |
 

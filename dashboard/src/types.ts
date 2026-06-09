@@ -18,7 +18,6 @@ export interface UIState {
   sensors:   SensorData
   leds:      LEDState
   riskLevel: RiskLevel
-  autoMode:  boolean
 }
 
 export interface LogEntry {
@@ -36,7 +35,6 @@ export interface AlertEntry {
 }
 
 export type HistoryBuffer = (number | null)[]
-export type SceneName = 'niebla' | 'vehiculo' | 'emergencia' | 'despejado'
 
 export type SensorKey = 'hum' | 'dist' | 'temp'
 
@@ -51,15 +49,15 @@ export interface SensorLogEntry {
 
 // Mensaje que llega del bridge via WebSocket
 export interface BridgeMessage {
-  connected: boolean         // false = heartbeat sin Arduino; true = Arduino detectado
-  event?:    'arduino_connected' | 'arduino_disconnected'  // evento explícito de conexión
+  connected: boolean
+  event?:    'arduino_connected' | 'arduino_disconnected'
   hum:       number | null   // null cuando DHT11 falla (Hum:ERR)
+  temp:      number | null   // null cuando DHT11 falla (Temp:ERR)
   dist:      number | null   // null cuando HC-SR04 sin eco (Dist:---)
   ledGreen:  boolean
   ledYellow: boolean
   ledRed:    boolean
   riskLevel: RiskLevel
   raw:       string
-  source:    'hardware' | 'simulation'
   ts:        number
 }

@@ -13,7 +13,7 @@
 #define UMBRAL_HUM_CAMANCHACA  80.0f   // % → verdes ON
 #define UMBRAL_DIST_MIN_CM      2.0f   // cm → límite inferior HC-SR04
 #define UMBRAL_DIST_MAX_CM      5.0f   // cm → límite superior zona de detección
-#define UMBRAL_DETENIDO_CM      3.0f   // variación máxima para considerar detenido
+#define UMBRAL_DETENIDO_CM      1.0f   // variación máxima para considerar detenido
 #define NUM_LECTURAS_HIST         5    // lecturas para detectar vehículo detenido
 
 // ── Sensor DHT11 ──────────────────────────────────────────────────────────────
@@ -81,8 +81,9 @@ void setup() {
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 void loop() {
-    // --- DHT11: humedad → LEDs verdes ---
-    float hum = dht.readHumidity();
+    // --- DHT11: humedad y temperatura ---
+    float hum  = dht.readHumidity();
+    float temp = dht.readTemperature();
 
     if (isnan(hum)) {
         digitalWrite(PIN_VERDE, LOW);
@@ -93,6 +94,10 @@ void loop() {
         Serial.print(hum, 0);
         Serial.print(F("%"));
     }
+
+    Serial.print(F("  Temp:"));
+    if (isnan(temp)) Serial.print(F("ERR"));
+    else { Serial.print(temp, 1); Serial.print(F("C")); }
 
     // --- HC-SR04: distancia → LEDs amarillo/rojo ---
     float dist = leerDistanciaCm();
