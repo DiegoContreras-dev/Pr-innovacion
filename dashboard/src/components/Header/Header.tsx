@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useSimContext } from '../../context/SimContext'
 
 export function Header() {
   const [time, setTime] = useState('--:--:--')
+  const { wsStatus, wsHasData } = useSimContext()
 
   useEffect(() => {
     const tick = () =>
@@ -11,28 +13,32 @@ export function Header() {
     return () => clearInterval(id)
   }, [])
 
-  return (
-    <header className="bg-zinc-900 border-b border-zinc-800 px-6 py-3 flex items-center justify-between flex-shrink-0">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-700 to-blue-400 flex items-center justify-center text-lg select-none">
-          🌫️
-        </div>
-        <div>
-          <h1 className="text-sm font-bold tracking-tight text-zinc-100">
-            Sistema Camanchaca UCN
-          </h1>
-          <p className="text-xs text-zinc-500">
-            Iluminación Vial Inteligente · Ruta 5 Norte · Coquimbo
-          </p>
-        </div>
-      </div>
+  let statusLabel: string
+  let statusCls: string
 
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-mono text-zinc-500 tabular-nums">{time}</span>
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950 border border-emerald-800 rounded-full px-3 py-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          En vivo
-        </span>
+  if (wsStatus === 'connecting') {
+    statusLabel = 'CONECTANDO…'
+    statusCls   = 'text-gray-400'
+  } else if (wsStatus === 'disconnected') {
+    statusLabel = 'SIN BRIDGE'
+    statusCls   = 'text-red-500'
+  } else if (wsHasData) {
+    statusLabel = 'EN VIVO · ARDUINO'
+    statusCls   = 'text-emerald-600'
+  } else {
+    statusLabel = 'SIN ARDUINO'
+    statusCls   = 'text-amber-500'
+  }
+
+  return (
+    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h1 className="text-sm font-semibold text-gray-900">Sistema Camanchaca UCN</h1>
+        <p className="text-xs text-gray-400">Iluminación Vial Inteligente · Ruta 5 Norte · Coquimbo</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="text-xs font-mono text-gray-400 tabular-nums">{time}</span>
+        <span className={`text-xs font-mono ${statusCls}`}>{statusLabel}</span>
       </div>
     </header>
   )

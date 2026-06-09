@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node -e \"require\\('playwright'\\)\")",
+      "Bash(curl -s http://localhost:5173)",
+      "Read(//usr/bin/**)",
+      "Read(//usr/**)",
+      "Bash(node -e \"const {chromium} = require\\('/usr/share/code/resources/app/node_modules/playwright-core'\\); console.log\\('ok'\\)\")"
+    ]
+  }
+}

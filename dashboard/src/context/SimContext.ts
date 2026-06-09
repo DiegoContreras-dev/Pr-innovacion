@@ -1,5 +1,8 @@
 import { createContext, useContext } from 'react'
-import type { UIState, LogEntry, AlertEntry, SensorLogEntry, HistoryBuffer, SceneName } from '../types'
+import type {
+  UIState, LogEntry, AlertEntry, SensorLogEntry, HistoryBuffer,
+  ConnectionStatus,
+} from '../types'
 
 export interface SimContextValue {
   uiState:    UIState
@@ -7,9 +10,9 @@ export interface SimContextValue {
   alerts:     AlertEntry[]
   sensorLogs: SensorLogEntry[]
   history:    { hum: HistoryBuffer; dist: HistoryBuffer }
-  setScene:   (s: SceneName) => void
-  toggleAuto: () => void
-  setSliders: (hum: number, dist: number) => void
+  wsStatus:   ConnectionStatus
+  wsSource:   'hardware' | 'simulation'
+  wsHasData:  boolean
 }
 
 export const SimContext = createContext<SimContextValue | null>(null)

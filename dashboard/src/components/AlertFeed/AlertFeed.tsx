@@ -4,10 +4,10 @@ import type { AlertEntry, RiskLevel } from '../../types'
 interface Props { alerts: AlertEntry[] }
 
 const LEVEL_STYLE: Record<RiskLevel, { row: string; badge: string; dot: string }> = {
-  standby:    { row: 'border-zinc-800',   badge: 'bg-zinc-800 text-zinc-400',      dot: 'bg-zinc-500'   },
-  normal:     { row: 'border-emerald-900', badge: 'bg-emerald-900 text-emerald-400', dot: 'bg-emerald-400' },
-  precaucion: { row: 'border-amber-900',   badge: 'bg-amber-900 text-amber-400',     dot: 'bg-amber-400'   },
-  alerta:     { row: 'border-red-900',     badge: 'bg-red-900 text-red-400',         dot: 'bg-red-400'     },
+  standby:    { row: 'border-gray-200',    badge: 'bg-gray-100 text-gray-500',        dot: 'bg-gray-400'    },
+  normal:     { row: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700',  dot: 'bg-emerald-500' },
+  precaucion: { row: 'border-amber-200',   badge: 'bg-amber-100 text-amber-700',      dot: 'bg-amber-400'   },
+  alerta:     { row: 'border-red-200',     badge: 'bg-red-100 text-red-700',          dot: 'bg-red-500'     },
 }
 
 const LEVEL_LABEL: Record<RiskLevel, string> = {
@@ -20,30 +20,24 @@ export function AlertFeed({ alerts }: Props) {
   return (
     <Link
       to="/alertas"
-      className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-3
-                 hover:border-zinc-600 hover:bg-zinc-800/60 transition-all duration-200 group"
+      className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-3
+                 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 group"
     >
-      {/* Cabecera */}
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-          Historial de alertas
-        </p>
+        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Historial de alertas</p>
         <div className="flex items-center gap-2">
           {alerts.length > 0 && (
-            <span className="text-[10px] bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full font-mono">
+            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-mono">
               {alerts.length}
             </span>
           )}
-          <span className="text-[10px] text-zinc-600 group-hover:text-zinc-400 transition-colors">
-            Ver todas →
-          </span>
+          <span className="text-[10px] text-gray-400 group-hover:text-gray-600 transition-colors">Ver todas →</span>
         </div>
       </div>
 
-      {/* Preview: últimas 3 */}
       <div className="flex flex-col gap-2">
         {preview.length === 0 ? (
-          <p className="text-xs text-zinc-700 text-center py-4">Sin alertas aún…</p>
+          <p className="text-xs text-gray-400 text-center py-4">Sin alertas aún…</p>
         ) : (
           preview.map((a, idx) => {
             const s = LEVEL_STYLE[a.level]
@@ -51,20 +45,20 @@ export function AlertFeed({ alerts }: Props) {
               <div
                 key={a.id}
                 className={[
-                  'rounded-lg border px-3 py-2 flex gap-2.5 items-start text-xs',
+                  'rounded-md border px-3 py-2 flex gap-2.5 items-start text-xs',
                   s.row,
-                  idx === 0 ? 'bg-zinc-800/50' : '',
+                  idx === 0 ? 'bg-gray-50' : 'bg-white',
                 ].join(' ')}
               >
                 <div className={`w-2 h-2 rounded-full mt-0.5 flex-shrink-0 ${s.dot}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`text-[10px] font-black px-1.5 py-px rounded ${s.badge}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-px rounded ${s.badge}`}>
                       {LEVEL_LABEL[a.level]}
                     </span>
-                    <span className="text-zinc-600 font-mono text-[10px]">{a.time}</span>
+                    <span className="text-gray-400 font-mono text-[10px]">{a.time}</span>
                   </div>
-                  <p className="text-zinc-400 leading-snug truncate">{a.message}</p>
+                  <p className="text-gray-600 leading-snug truncate">{a.message}</p>
                 </div>
               </div>
             )
@@ -72,9 +66,8 @@ export function AlertFeed({ alerts }: Props) {
         )}
       </div>
 
-      {/* Footer si hay más */}
       {alerts.length > 3 && (
-        <p className="text-[10px] text-center text-zinc-600 group-hover:text-zinc-500 transition-colors">
+        <p className="text-[10px] text-center text-gray-400 group-hover:text-gray-500 transition-colors">
           + {alerts.length - 3} alertas más
         </p>
       )}

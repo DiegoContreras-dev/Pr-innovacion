@@ -1,9 +1,35 @@
 services:
+
+  # ── Serial-to-WebSocket bridge ──────────────────────────────────────────────
+  # Lee el Arduino por USB y retransmite datos al dashboard via WebSocket.
+  # Si no hay hardware conectado, corre simulación con la misma lógica de main.cpp.
+  #
+  # Para pasar el puerto serial del Arduino, descomenta "devices:" y ajusta la ruta:
+  #   devices:
+  #     - /dev/ttyUSB0:/dev/ttyUSB0   # ESP32 / CH340
+  #     - /dev/ttyACM0:/dev/ttyACM0   # Arduino Uno / Mega
+  bridge:
+    build:
+      context: ./bridge
+      dockerfile: Dockerfile
+    container_name: camanchaca-bridge
+    restart: unless-stopped
+    environment:
+      - SERIAL_PORTS=/dev/ttyUSB0,/dev/ttyACM0,/dev/ttyUSB1,/dev/ttyACM1
+      - WS_PORT=3001
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    group_add: ["dialout"]
+
+  # ── Dashboard web ───────────────────────────────────────────────────────────
+  # nginx sirve el build de React y hace proxy del WebSocket al bridge.
   dashboard:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
     container_name: camanchaca-dashboard
+    restart: unless-stopped
     ports:
       - "3000:80"
-    restart: unless-stopped
+    depends_on:
+      - bridge

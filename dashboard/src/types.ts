@@ -13,6 +13,8 @@ export interface LEDState {
 
 export type RiskLevel = 'standby' | 'normal' | 'precaucion' | 'alerta'
 
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
+
 export interface UIState {
   sensors:   SensorData
   leds:      LEDState
@@ -48,3 +50,16 @@ export interface SensorLogEntry {
   type:   'normal' | 'warn' | 'err'
 }
 
+// Mensaje que llega del bridge via WebSocket
+export interface BridgeMessage {
+  hum:       number | null   // null cuando DHT11 falla (Hum:ERR)
+  dist:      number | null   // null cuando HC-SR04 sin eco (Dist:---)
+  lux:       number | null   // null cuando hum es null; aproximado, no hay LDR real
+  ledGreen:  boolean
+  ledYellow: boolean
+  ledRed:    boolean
+  riskLevel: RiskLevel
+  raw:       string
+  source:    'hardware' | 'simulation'
+  ts:        number
+}
