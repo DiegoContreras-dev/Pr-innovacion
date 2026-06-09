@@ -11,8 +11,9 @@
 
 // ── Umbrales ──────────────────────────────────────────────────────────────────
 #define UMBRAL_HUM_CAMANCHACA  80.0f   // % → verdes ON
-#define UMBRAL_DIST_VEHICULO  150.0f   // cm → zona de detección
-#define UMBRAL_DETENIDO_CM      3.0f   // variación máxima para considerar detenido
+#define UMBRAL_DIST_MIN_CM      2.0f   // cm → límite inferior HC-SR04
+#define UMBRAL_DIST_MAX_CM      5.0f   // cm → límite superior zona de detección
+#define UMBRAL_DETENIDO_CM      1.0f   // variación máxima para considerar detenido
 #define NUM_LECTURAS_HIST         5    // lecturas para detectar vehículo detenido
 
 // ── Sensor DHT11 ──────────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@ float leerDistanciaCm() {
     digitalWrite(PIN_TRIG, HIGH);
     delayMicroseconds(10);
     digitalWrite(PIN_TRIG, LOW);
-    long dur = pulseIn(PIN_ECHO, HIGH, 30000UL);
+    long dur = pulseIn(PIN_ECHO, HIGH, 600UL);   // timeout ~10 cm, descartar objetos lejanos
     if (dur == 0) return -1.0f;
     return (dur * 0.0343f) / 2.0f;
 }
@@ -80,8 +81,9 @@ void setup() {
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 void loop() {
-    // --- DHT11: humedad → LEDs verdes ---
-    float hum = dht.readHumidity();
+    // --- DHT11: humedad y temperatura ---
+    float hum  = dht.readHumidity();
+    float temp = dht.readTemperature();
 
     if (isnan(hum)) {
         digitalWrite(PIN_VERDE, LOW);
@@ -93,6 +95,10 @@ void loop() {
         Serial.print(F("%"));
     }
 
+    Serial.print(F("  Temp:"));
+    if (isnan(temp)) Serial.print(F("ERR"));
+    else { Serial.print(temp, 1); Serial.print(F("C")); }
+
     // --- HC-SR04: distancia → LEDs amarillo/rojo ---
     float dist = leerDistanciaCm();
 
@@ -100,7 +106,7 @@ void loop() {
     if (dist < 0) Serial.print(F("---"));
     else { Serial.print(dist, 1); Serial.print(F("cm")); }
 
-    if (dist < 0 || dist > UMBRAL_DIST_VEHICULO) {
+    if (dist < UMBRAL_DIST_MIN_CM || dist > UMBRAL_DIST_MAX_CM) {
         // Fuera de rango → sin vehículo, resetear historial
         resetHistorial();
         digitalWrite(PIN_AMARILLO, LOW);
