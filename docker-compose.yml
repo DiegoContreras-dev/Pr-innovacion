@@ -17,9 +17,9 @@ services:
     environment:
       - SERIAL_PORTS=/dev/ttyUSB0,/dev/ttyACM0,/dev/ttyUSB1,/dev/ttyACM1
       - WS_PORT=3001
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
-    group_add: ["dialout"]
+    privileged: true
+    volumes:
+      - /dev:/dev
 
   # ── Dashboard web ───────────────────────────────────────────────────────────
   # nginx sirve el build de React y hace proxy del WebSocket al bridge.

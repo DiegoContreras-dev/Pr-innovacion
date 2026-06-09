@@ -52,6 +52,7 @@ export interface SensorLogEntry {
 
 // Mensaje que llega del bridge via WebSocket
 export interface BridgeMessage {
+  connected: boolean         // false = heartbeat sin Arduino; true = Arduino detectado
   hum:       number | null   // null cuando DHT11 falla (Hum:ERR)
   dist:      number | null   // null cuando HC-SR04 sin eco (Dist:---)
   lux:       number | null   // null cuando hum es null; aproximado, no hay LDR real

@@ -46,7 +46,7 @@ export function SerialLog({ logs }: Props) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="bg-gray-50 rounded-md border border-gray-200 p-3 h-44 overflow-y-auto"
+        className="bg-gray-50 rounded-md border border-gray-200 p-3 h-72 overflow-y-auto"
       >
         <table className="w-full border-collapse text-xs font-mono">
           <tbody>

@@ -76,7 +76,7 @@ export function useSimulation() {
     setLogs(prev => {
       const entry: LogEntry = { id: track.current.logId++, time: nowTime(), msg, type }
       const next = [...prev, entry]
-      return next.length > 150 ? next.slice(-150) : next
+      return next.length > 500 ? next.slice(-500) : next
     })
   }, [])
 
@@ -115,8 +115,7 @@ export function useSimulation() {
           const data: BridgeMessage = JSON.parse(e.data as string)
           bridgeMsg.current = data
           setWsSource(data.source)
-          // Cualquier mensaje del bridge es línea de sensor — activar panel
-          setWsHasData(true)
+          setWsHasData(data.connected === true)
         } catch (_) { /* ignorar JSON malformado */ }
       }
 
@@ -150,7 +149,7 @@ export function useSimulation() {
       t.lastTs = ts
 
       const bd = bridgeMsg.current
-      if (!bd) { rafId = requestAnimationFrame(loop); return }
+      if (!bd || !bd.connected) { rafId = requestAnimationFrame(loop); return }
 
       // Valores del bridge — null significa sensor sin lectura válida
       const hum  = bd.hum  ?? t.hum   // mantiene último valor si DHT11 da ERR

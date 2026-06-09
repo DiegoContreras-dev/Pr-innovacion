@@ -59,6 +59,7 @@ function parseLine(line) {
   const lux = hum !== null ? Math.max(10, Math.round(1000 - hum * 9)) : null
 
   return {
+    connected: true,
     hum, dist, lux,
     ledGreen, ledYellow, ledRed,
     riskLevel,
@@ -66,6 +67,28 @@ function parseLine(line) {
     source: 'hardware',
     ts:     Date.now(),
   }
+}
+
+const HEARTBEAT_PAYLOAD = {
+  connected: false,
+  hum: null, dist: null, lux: null,
+  ledGreen: false, ledYellow: false, ledRed: false,
+  riskLevel: 'standby',
+  raw: '',
+  source: 'hardware',
+}
+
+let heartbeatInterval = null
+
+function startHeartbeat() {
+  if (heartbeatInterval) return
+  heartbeatInterval = setInterval(() => {
+    broadcast({ ...HEARTBEAT_PAYLOAD, ts: Date.now() })
+  }, 3000)
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null }
 }
 
 // ── Conexión serial ───────────────────────────────────────────────────────────
@@ -86,10 +109,13 @@ async function startSerial() {
   const port = await tryOpenSerial()
 
   if (!port) {
-    console.log('[bridge] Sin dispositivo serial — esperando Arduino.')
+    console.log('[bridge] Sin dispositivo serial — reintentando en 3s.')
+    startHeartbeat()
+    setTimeout(startSerial, 3000)
     return
   }
 
+  stopHeartbeat()
   console.log(`[bridge] Arduino detectado @ ${BAUD} baud`)
 
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }))
@@ -103,9 +129,10 @@ async function startSerial() {
   })
 
   const onDisconnect = () => {
-    console.log('[bridge] Arduino desconectado. Reintentando en 5s...')
+    console.log('[bridge] Arduino desconectado. Reintentando en 3s...')
     try { port.close() } catch (_) {}
-    setTimeout(startSerial, 5000)
+    startHeartbeat()
+    setTimeout(startSerial, 3000)
   }
 
   port.on('close', onDisconnect)
