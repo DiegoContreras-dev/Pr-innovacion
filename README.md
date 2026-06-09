@@ -55,7 +55,7 @@ La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de l
 │                                                                  │
 │  • Lee el puerto serie del Arduino (serialport v12)             │
 │  • Parsea cada línea y deriva: hum, dist, lux, LEDs, riskLevel  │
-│  • Si no hay hardware → simulación con la misma lógica C++      │
+│  • Si no hay hardware → heartbeat "connected: false" cada 3s      │
 │  • Emite JSON por WebSocket en :3001                             │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ ws://bridge:3001
@@ -139,6 +139,7 @@ Línea serial → parseLine()
 
 ```json
 {
+  "connected": true,
   "hum": 73,
   "dist": 124.5,
   "lux": 343,
@@ -152,7 +153,13 @@ Línea serial → parseLine()
 }
 ```
 
-El campo `source` indica `"hardware"` cuando hay Arduino conectado, o `"simulation"` cuando el bridge está en modo de fallback.
+Cuando no hay Arduino, el bridge emite cada 3 s:
+
+```json
+{ "connected": false, "hum": null, "dist": null, "lux": null, "ledGreen": false, "ledYellow": false, "ledRed": false, "riskLevel": "standby", "raw": "", "source": "hardware", "ts": 1717800000000 }
+```
+
+El campo `connected: false` hace que el dashboard pause el procesamiento de datos y alertas sin desconectar el WebSocket.
 
 ### 4. Dashboard
 
@@ -251,8 +258,8 @@ Arduino UNO
 
 ```bash
 # Agregar usuario al grupo para acceder a puertos serie
-sudo usermod -aG uucp $USER   # Arch/CachyOS
-# sudo usermod -aG dialout $USER  # Ubuntu/Debian
+sudo usermod -aG dialout $USER   # Ubuntu/Debian/OpenSUSE
+# sudo usermod -aG uucp $USER    # Arch/CachyOS
 
 # Cerrar sesión y volver a entrar para que tome efecto
 ```
@@ -304,8 +311,8 @@ El bridge (`bridge/src/index.js`) es un proceso Node.js que actúa como intermed
 
 1. **Detecta el puerto serie** — prueba `/dev/ttyUSB0`, `/dev/ttyACM0`, `/dev/ttyUSB1`, `/dev/ttyACM1` en orden
 2. **Parsea cada línea** del Arduino al formato JSON que consume el dashboard
-3. **Simula datos** con la misma lógica de `main.cpp` cuando no hay hardware conectado
-4. **Reconecta** automáticamente si el Arduino se desconecta (reintento cada 5 s)
+3. **Heartbeat** — si no hay Arduino, emite `{ connected: false }` cada 3 s para que el dashboard sepa que está en espera
+4. **Reconecta** automáticamente si el Arduino se desconecta (reintento cada 3 s)
 5. **Emite JSON** por WebSocket en el puerto `3001`
 
 ### Variables de entorno
@@ -346,9 +353,9 @@ Aplicación React 18 + TypeScript + Vite 5 + Tailwind CSS 3.
 | Estado | Texto | Significado |
 |---|---|---|
 | `connecting` | `CONECTANDO…` | Intentando conectar al bridge |
-| `connected` + `hardware` | `EN VIVO · ARDUINO` | Bridge activo con Arduino real |
-| `connected` + `simulation` | `EN VIVO · SIM` | Bridge activo en modo simulación |
-| `disconnected` | `SIMULACIÓN` | Bridge no disponible |
+| `connected` + Arduino detectado | `EN VIVO · ARDUINO` | Datos reales del Arduino |
+| `connected` + sin Arduino | `SIN ARDUINO` | Bridge activo, esperando USB |
+| `disconnected` | `SIN BRIDGE` | Bridge no disponible (Docker caído) |
 
 ---
 
@@ -359,9 +366,7 @@ Aplicación React 18 + TypeScript + Vite 5 + Tailwind CSS 3.
 - [Docker Engine](https://docs.docker.com/engine/install/) ≥ 24
 - [Docker Compose](https://docs.docker.com/compose/install/) v2
 
-### Modo simulación (sin Arduino)
-
-No se necesita hardware. El bridge detecta que no hay puerto serie y activa la simulación automáticamente.
+### Lanzamiento
 
 ```bash
 # Clonar el repositorio
@@ -369,46 +374,18 @@ git clone <url-del-repo>
 cd Pr-innovacion
 
 # Construir imágenes y levantar servicios
-docker compose up -d
+docker compose up -d --build
 
 # Abrir el dashboard
 # http://localhost:3000
 ```
 
-El header del dashboard mostrará `EN VIVO · SIM` mientras no haya Arduino conectado.
+El sistema arranca siempre, con o sin Arduino conectado:
 
-### Modo hardware (con Arduino conectado)
+- **Sin Arduino:** el dashboard carga completo con sensores en `---`. El bridge reintenta encontrar el puerto cada 3 s en segundo plano. No se generan alertas.
+- **Con Arduino:** en cuanto se detecta el USB, los datos aparecen automáticamente y el header cambia a `EN VIVO · ARDUINO`. No se necesita reiniciar Docker.
 
-1. Subir el firmware al Arduino:
-   ```bash
-   pio run --target upload
-   ```
-
-2. Identificar el puerto:
-   ```bash
-   ls /dev/ttyUSB* /dev/ttyACM*
-   ```
-
-3. Editar `docker-compose.yml` y descomentar la sección `devices` del servicio `bridge`:
-   ```yaml
-   bridge:
-     devices:
-       - /dev/ttyUSB0:/dev/ttyUSB0   # ajustar según tu puerto
-   ```
-
-4. (Si el contenedor no tiene permisos sobre el puerto) descomentar también:
-   ```yaml
-   bridge:
-     group_add: ["dialout"]   # Ubuntu/Debian
-   # group_add: ["uucp"]      # Arch/CachyOS
-   ```
-
-5. Levantar:
-   ```bash
-   docker compose up -d
-   ```
-
-El header del dashboard cambiará a `EN VIVO · ARDUINO` cuando el bridge detecte el Arduino.
+> El servicio `bridge` usa `privileged: true` con el volumen `/dev:/dev` para acceder a cualquier dispositivo USB que se conecte en caliente, sin necesidad de declarar el puerto de antemano.
 
 ### Comandos útiles
 
