@@ -1,7 +1,8 @@
 export interface SensorData {
-  hum:  number
-  dist: number
-  temp: number
+  hum:   number
+  temp:  number
+  dist1: number
+  dist2: number
 }
 
 export interface LEDState {
@@ -36,7 +37,7 @@ export interface AlertEntry {
 
 export type HistoryBuffer = (number | null)[]
 
-export type SensorKey = 'hum' | 'dist' | 'temp'
+export type SensorKey = 'hum' | 'temp' | 'dist1' | 'dist2'
 
 export interface SensorLogEntry {
   id:     number
@@ -51,9 +52,10 @@ export interface SensorLogEntry {
 export interface BridgeMessage {
   connected: boolean
   event?:    'arduino_connected' | 'arduino_disconnected'
-  hum:       number | null   // null cuando DHT11 falla (Hum:ERR)
-  temp:      number | null   // null cuando DHT11 falla (Temp:ERR)
-  dist:      number | null   // null cuando HC-SR04 sin eco (Dist:---)
+  hum:       number | null
+  temp:      number | null
+  dist1:     number | null
+  dist2:     number | null
   ledGreen:  boolean
   ledYellow: boolean
   ledRed:    boolean

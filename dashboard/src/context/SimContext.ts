@@ -9,7 +9,7 @@ export interface SimContextValue {
   logs:       LogEntry[]
   alerts:     AlertEntry[]
   sensorLogs: SensorLogEntry[]
-  history:    { hum: HistoryBuffer; dist: HistoryBuffer }
+  history:    { hum: HistoryBuffer; dist1: HistoryBuffer; dist2: HistoryBuffer }
   wsStatus:   ConnectionStatus
   wsHasData:  boolean
 }

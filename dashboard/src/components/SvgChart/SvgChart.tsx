@@ -19,11 +19,12 @@ function buildPath(data: HistoryBuffer, maxVal: number, iw: number, ih: number):
 }
 
 interface Props {
-  hum:  HistoryBuffer
-  dist: HistoryBuffer
+  hum:   HistoryBuffer
+  dist1: HistoryBuffer
+  dist2: HistoryBuffer
 }
 
-export function SvgChart({ hum, dist }: Props) {
+export function SvgChart({ hum, dist1, dist2 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(800)
 
@@ -41,28 +42,34 @@ export function SvgChart({ hum, dist }: Props) {
   const IW = width - PAD.left - PAD.right
   const IH = H - PAD.top - PAD.bottom
 
-  const humPath  = buildPath(hum,  100, IW, IH)
-  const distPath = buildPath(dist, 400, IW, IH)
+  const humPath   = buildPath(hum,   100, IW, IH)
+  const dist1Path = buildPath(dist1, 10,  IW, IH)
+  const dist2Path = buildPath(dist2, 10,  IW, IH)
 
   const yTicks = [0, 25, 50, 75, 100]
 
-  const lastHum  = [...hum].reverse().find(v => v !== null) ?? null
-  const lastDist = [...dist].reverse().find(v => v !== null) ?? null
+  const lastHum   = [...hum].reverse().find(v => v !== null)   ?? null
+  const lastDist1 = [...dist1].reverse().find(v => v !== null) ?? null
+  const lastDist2 = [...dist2].reverse().find(v => v !== null) ?? null
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
           Historial de sensores — últimos 60 s
         </p>
-        <div className="flex items-center gap-4 text-xs text-gray-400">
+        <div className="flex items-center gap-4 text-xs text-gray-400 flex-wrap">
           <span className="flex items-center gap-1.5">
             <span className="w-5 h-px bg-blue-500 inline-block" />
             Humedad {lastHum !== null ? `${lastHum.toFixed(0)}%` : ''}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-5 h-px bg-emerald-500 inline-block" />
-            Distancia {lastDist !== null ? `${lastDist.toFixed(0)} cm` : ''}
+            <span className="w-5 h-px bg-cyan-500 inline-block" />
+            Dist 1 {lastDist1 !== null ? `${lastDist1.toFixed(1)} cm` : ''}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-5 h-px bg-teal-500 inline-block" />
+            Dist 2 {lastDist2 !== null ? `${lastDist2.toFixed(1)} cm` : ''}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-5 border-t border-dashed border-blue-400 inline-block" />
@@ -87,13 +94,18 @@ export function SvgChart({ hum, dist }: Props) {
               )
             })}
 
+            {/* Umbral niebla 80% */}
             <line
               x1={0} y1={IH * 0.2} x2={IW} y2={IH * 0.2}
               stroke="#3b82f6" strokeWidth="1" strokeDasharray="5,4" opacity="0.4"
             />
 
-            {distPath && (
-              <path d={distPath} fill="none" stroke="#10b981" strokeWidth="1.5"
+            {dist2Path && (
+              <path d={dist2Path} fill="none" stroke="#14b8a6" strokeWidth="1.5"
+                    strokeLinecap="round" strokeLinejoin="round" />
+            )}
+            {dist1Path && (
+              <path d={dist1Path} fill="none" stroke="#06b6d4" strokeWidth="1.5"
                     strokeLinecap="round" strokeLinejoin="round" />
             )}
             {humPath && (

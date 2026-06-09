@@ -4,9 +4,10 @@ import { useSimContext } from '../../context/SimContext'
 import type { SensorKey, SensorLogEntry } from '../../types'
 
 const SENSORES: { key: SensorKey; label: string; unit: string }[] = [
-  { key: 'hum',  label: 'Humedad',     unit: '%'  },
-  { key: 'temp', label: 'Temperatura', unit: '°C' },
-  { key: 'dist', label: 'Distancia',   unit: 'cm' },
+  { key: 'hum',   label: 'Humedad',      unit: '%'  },
+  { key: 'temp',  label: 'Temperatura',  unit: '°C' },
+  { key: 'dist1', label: 'Distancia 1',  unit: 'cm' },
+  { key: 'dist2', label: 'Distancia 2',  unit: 'cm' },
 ]
 
 const TYPE_CLS: Record<SensorLogEntry['type'], string> = {
@@ -95,7 +96,7 @@ export function PaginaRegistros() {
           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-3">
             Historial de lecturas
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {SENSORES.map(s => (
               <SensorLogCol
                 key={s.key}

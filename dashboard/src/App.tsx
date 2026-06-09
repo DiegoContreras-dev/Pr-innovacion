@@ -21,10 +21,11 @@ function Dashboard() {
       <main className="flex-1 p-4 flex flex-col gap-4 max-w-[1440px] mx-auto w-full">
         <RiskBanner level={riskLevel} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <SensorCard label="Humedad"     value={sensors.hum}  unit="%"  max={100} barColor="bg-blue-500"   invalid={!wsHasData || sensors.hum  <= 0} />
-          <SensorCard label="Temperatura" value={sensors.temp} unit="°C" max={50}  barColor="bg-orange-500" invalid={!wsHasData || sensors.temp <= 0} decimal />
-          <SensorCard label="Distancia"   value={sensors.dist} unit="cm" max={10}  barColor="bg-cyan-500"   invalid={!wsHasData || sensors.dist <= 0} decimal />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <SensorCard label="Humedad"      value={sensors.hum}   unit="%"  max={100} barColor="bg-blue-500"   invalid={!wsHasData || sensors.hum   <= 0} />
+          <SensorCard label="Temperatura"  value={sensors.temp}  unit="°C" max={50}  barColor="bg-orange-500" invalid={!wsHasData || sensors.temp  <= 0} decimal />
+          <SensorCard label="Distancia 1"  value={sensors.dist1} unit="cm" max={10}  barColor="bg-cyan-500"   invalid={!wsHasData || sensors.dist1 <= 0} decimal />
+          <SensorCard label="Distancia 2"  value={sensors.dist2} unit="cm" max={10}  barColor="bg-teal-500"   invalid={!wsHasData || sensors.dist2 <= 0} decimal />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -32,7 +33,7 @@ function Dashboard() {
           <AlertFeed alerts={alerts} />
         </div>
 
-        <SvgChart hum={history.hum} dist={history.dist} />
+        <SvgChart hum={history.hum} dist1={history.dist1} dist2={history.dist2} />
         <SerialLog logs={logs} />
       </main>
 
