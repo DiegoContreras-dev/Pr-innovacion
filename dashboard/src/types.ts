@@ -2,7 +2,6 @@ export interface SensorData {
   hum:  number
   dist: number
   temp: number
-  lux:  number
 }
 
 export interface LEDState {
@@ -39,7 +38,7 @@ export interface AlertEntry {
 export type HistoryBuffer = (number | null)[]
 export type SceneName = 'niebla' | 'vehiculo' | 'emergencia' | 'despejado'
 
-export type SensorKey = 'hum' | 'dist' | 'temp' | 'lux'
+export type SensorKey = 'hum' | 'dist' | 'temp'
 
 export interface SensorLogEntry {
   id:     number
@@ -53,9 +52,9 @@ export interface SensorLogEntry {
 // Mensaje que llega del bridge via WebSocket
 export interface BridgeMessage {
   connected: boolean         // false = heartbeat sin Arduino; true = Arduino detectado
+  event?:    'arduino_connected' | 'arduino_disconnected'  // evento explícito de conexión
   hum:       number | null   // null cuando DHT11 falla (Hum:ERR)
   dist:      number | null   // null cuando HC-SR04 sin eco (Dist:---)
-  lux:       number | null   // null cuando hum es null; aproximado, no hay LDR real
   ledGreen:  boolean
   ledYellow: boolean
   ledRed:    boolean

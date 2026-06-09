@@ -22,9 +22,8 @@ function Dashboard() {
         <RiskBanner level={riskLevel} />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <SensorCard label="Humedad"     value={sensors.hum}  unit="%"  max={100}  barColor="bg-blue-500"    invalid={!wsHasData || sensors.hum  <= 0} />
-          <SensorCard label="Distancia"   value={sensors.dist} unit="cm" max={400}  barColor="bg-cyan-500"    invalid={!wsHasData || sensors.dist <= 0} />
-          <SensorCard label="Luminosidad" value={sensors.lux}  unit="lx" max={1000} barColor="bg-violet-500"  invalid={!wsHasData} />
+          <SensorCard label="Humedad"   value={sensors.hum}  unit="%"  max={100} barColor="bg-blue-500" invalid={!wsHasData || sensors.hum  <= 0} />
+          <SensorCard label="Distancia" value={sensors.dist} unit="cm" max={400} barColor="bg-cyan-500" invalid={!wsHasData || sensors.dist <= 0} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

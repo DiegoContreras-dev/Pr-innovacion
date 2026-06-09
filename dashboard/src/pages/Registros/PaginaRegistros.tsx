@@ -4,9 +4,8 @@ import { useSimContext } from '../../context/SimContext'
 import type { SensorKey, SensorLogEntry } from '../../types'
 
 const SENSORES: { key: SensorKey; label: string; unit: string }[] = [
-  { key: 'hum',  label: 'Humedad',     unit: '%'  },
-  { key: 'dist', label: 'Distancia',   unit: 'cm' },
-  { key: 'lux',  label: 'Luminosidad', unit: 'lx' },
+  { key: 'hum',  label: 'Humedad',   unit: '%'  },
+  { key: 'dist', label: 'Distancia', unit: 'cm' },
 ]
 
 const TYPE_CLS: Record<SensorLogEntry['type'], string> = {

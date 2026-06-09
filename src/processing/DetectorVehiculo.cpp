@@ -7,8 +7,8 @@ EstadoVehiculo DetectorVehiculo::evaluar() {
     float distancia   = _sensor.leerDistanciaCm();
     unsigned long ahora = millis();
 
-    // Fuera de rango → sin vehículo
-    if (distancia < 0 || distancia > DISTANCIA_MAX_CM) {
+    // Fuera de rango 2–5 cm → sin vehículo
+    if (distancia < DISTANCIA_MIN_CM || distancia > DISTANCIA_MAX_CM) {
         _distanciaAnterior = distancia;
         _tAnterior         = ahora;
         return EstadoVehiculo::SIN_VEHICULO;

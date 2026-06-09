@@ -14,7 +14,8 @@ public:
     EstadoVehiculo evaluar();
 
     // Umbrales ajustables (escala prototipo)
-    static constexpr float DISTANCIA_MAX_CM        = 50.0f; // rango de detección
+    static constexpr float DISTANCIA_MIN_CM        =  2.0f; // límite inferior (mínimo físico HC-SR04)
+    static constexpr float DISTANCIA_MAX_CM        =  5.0f; // límite superior zona de detección
     static constexpr float VELOCIDAD_LENTO_CM_S    = 10.0f; // cm/s → vehículo lento
     static constexpr float VELOCIDAD_DETENIDO_CM_S =  2.0f; // cm/s → detenido
 private:

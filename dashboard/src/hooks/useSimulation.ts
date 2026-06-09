@@ -18,7 +18,7 @@ function nowTime() {
 }
 
 interface TrackRef {
-  hum: number; dist: number; lux: number
+  hum: number; dist: number
   lastTs: number; uiTimer: number; serialTimer: number; histTimer: number; sensorTimer: number
   humHistory: HistoryBuffer; distHistory: HistoryBuffer; histPtr: number
   logId: number; alertId: number; sensorLogId: number
@@ -30,7 +30,7 @@ interface TrackRef {
 
 export function useSimulation() {
   const track = useRef<TrackRef>({
-    hum: 0, dist: 0, lux: 0,
+    hum: 0, dist: 0,
     lastTs: 0, uiTimer: 0, serialTimer: 0, histTimer: 0, sensorTimer: 0,
     humHistory:  new Array(HIST_LEN).fill(null),
     distHistory: new Array(HIST_LEN).fill(null),
@@ -43,9 +43,10 @@ export function useSimulation() {
   })
 
   // ── WebSocket bridge ─────────────────────────────────────────────────────────
-  const bridgeMsg   = useRef<BridgeMessage | null>(null)
-  const wsRef       = useRef<WebSocket | null>(null)
-  const reconnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bridgeMsg          = useRef<BridgeMessage | null>(null)
+  const wsRef              = useRef<WebSocket | null>(null)
+  const reconnTimer        = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prevArduinoConn    = useRef<boolean | null>(null)
 
   const [wsStatus,  setWsStatus]  = useState<ConnectionStatus>('connecting')
   const [wsSource,  setWsSource]  = useState<'hardware' | 'simulation'>('simulation')
@@ -53,7 +54,7 @@ export function useSimulation() {
 
   // ── Estado UI ────────────────────────────────────────────────────────────────
   const [uiState, setUiState] = useState<UIState>({
-    sensors:   { hum: 0, dist: 0, temp: 0, lux: 0 },
+    sensors:   { hum: 0, dist: 0, temp: 0 },
     leds:      { green: false, yellow: false, red: false },
     riskLevel: 'standby',
     autoMode:  false,
@@ -116,6 +117,12 @@ export function useSimulation() {
           bridgeMsg.current = data
           setWsSource(data.source)
           setWsHasData(data.connected === true)
+          // Notificar al cambiar estado del Arduino
+          if (prevArduinoConn.current !== data.connected) {
+            prevArduinoConn.current = data.connected
+            if (data.connected) appendLog('>>> Arduino conectado — recibiendo datos del sensor', 'normal')
+            else                appendLog('>>> Arduino desconectado — sin señal serial', 'warn')
+          }
         } catch (_) { /* ignorar JSON malformado */ }
       }
 
@@ -154,10 +161,8 @@ export function useSimulation() {
       // Valores del bridge — null significa sensor sin lectura válida
       const hum  = bd.hum  ?? t.hum   // mantiene último valor si DHT11 da ERR
       const dist = bd.dist ?? t.dist  // mantiene último valor si HC-SR04 sin eco
-      const lux  = bd.lux  ?? t.lux
       t.hum  = hum
       t.dist = dist
-      t.lux  = lux
       t.ledGreen  = bd.ledGreen
       t.ledYellow = bd.ledYellow
       t.ledRed    = bd.ledRed
@@ -193,7 +198,6 @@ export function useSimulation() {
         appendSensorLog('hum',  `${hum.toFixed(0)}%`,  'Lectura DHT11 — Humedad ambiental', humType)
         appendSensorLog('dist', dist > 0 ? `${dist.toFixed(1)}cm` : '---',
           t.ledRed ? 'HC-SR04 — Vehículo DETENIDO' : t.ledYellow ? 'HC-SR04 — Vehículo en movimiento' : 'HC-SR04 — Sin vehículo en zona', distType)
-        appendSensorLog('lux',  `${lux.toFixed(0)}lx`, lux < 100 ? 'LDR — Baja luminosidad (niebla/noche)' : 'LDR — Luminosidad normal', lux < 100 ? 'warn' : 'normal')
       }
 
       // UI state (throttle 200ms)
@@ -201,7 +205,7 @@ export function useSimulation() {
       if (t.uiTimer >= 200) {
         t.uiTimer = 0
         setUiState({
-          sensors:   { hum, dist, temp: 0, lux },
+          sensors:   { hum, dist, temp: 0 },
           leds:      { green: t.ledGreen, yellow: t.ledYellow, red: t.ledRed },
           riskLevel,
           autoMode:  false,

@@ -54,13 +54,9 @@ function parseLine(line) {
                   : ledGreen  ? 'normal'
                   :             'standby'
 
-  // lux no existe en el hardware real; se aproxima desde humedad.
-  // Alta humedad (niebla) → poca luminosidad. Escala: 100%hum → 100lx, 0%hum → 1000lx
-  const lux = hum !== null ? Math.max(10, Math.round(1000 - hum * 9)) : null
-
   return {
     connected: true,
-    hum, dist, lux,
+    hum, dist,
     ledGreen, ledYellow, ledRed,
     riskLevel,
     raw:    line.trim(),
@@ -71,7 +67,7 @@ function parseLine(line) {
 
 const HEARTBEAT_PAYLOAD = {
   connected: false,
-  hum: null, dist: null, lux: null,
+  hum: null, dist: null,
   ledGreen: false, ledYellow: false, ledRed: false,
   riskLevel: 'standby',
   raw: '',
@@ -120,20 +116,35 @@ async function startSerial() {
 
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }))
 
+  // Solo notificar "conectado" cuando llega la primera línea de sensor válida
+  let confirmed = false
+  // Flag para evitar doble llamada de onDisconnect (error → close → error)
+  let gone = false
+
+  const onDisconnect = () => {
+    if (gone) return
+    gone = true
+    port.removeAllListeners()
+    console.log('[bridge] Arduino desconectado. Reintentando en 3s...')
+    try { port.close() } catch (_) {}
+    if (confirmed) broadcast({ ...HEARTBEAT_PAYLOAD, event: 'arduino_disconnected', ts: Date.now() })
+    startHeartbeat()
+    setTimeout(startSerial, 3000)
+  }
+
   parser.on('data', line => {
     const trimmed = line.trim()
     if (!trimmed) return
     process.stdout.write(`[hw] ${trimmed}\n`)
     const payload = parseLine(trimmed)
-    if (payload) broadcast(payload)
+    if (payload) {
+      if (!confirmed) {
+        confirmed = true
+        broadcast({ ...HEARTBEAT_PAYLOAD, connected: true, event: 'arduino_connected', ts: Date.now() })
+      }
+      broadcast(payload)
+    }
   })
-
-  const onDisconnect = () => {
-    console.log('[bridge] Arduino desconectado. Reintentando en 3s...')
-    try { port.close() } catch (_) {}
-    startHeartbeat()
-    setTimeout(startSerial, 3000)
-  }
 
   port.on('close', onDisconnect)
   port.on('error', err => { console.error(`[bridge] Error serial: ${err.message}`); onDisconnect() })
