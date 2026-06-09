@@ -141,13 +141,12 @@ Línea serial → parseLine()
   "connected": true,
   "hum": 73,
   "temp": 22.5,
-  "dist": 124.5,
+  "dist": 3.4,
   "ledGreen": false,
   "ledYellow": true,
   "ledRed": false,
   "riskLevel": "precaucion",
-  "raw": "Hum:73%  Temp:22.5C  Dist:124.5cm  -> EN MOVIMIENTO [AMARILLO]",
-  "source": "hardware",
+  "raw": "Hum:73%  Temp:22.5C  Dist:3.4cm  -> EN MOVIMIENTO [AMARILLO]",
   "ts": 1717800000000
 }
 ```
@@ -155,7 +154,7 @@ Línea serial → parseLine()
 Cuando no hay Arduino, el bridge emite cada 3 s:
 
 ```json
-{ "connected": false, "hum": null, "temp": null, "dist": null, "ledGreen": false, "ledYellow": false, "ledRed": false, "riskLevel": "standby", "raw": "", "source": "hardware", "ts": 1717800000000 }
+{ "connected": false, "hum": null, "temp": null, "dist": null, "ledGreen": false, "ledYellow": false, "ledRed": false, "riskLevel": "standby", "raw": "", "ts": 1717800000000 }
 ```
 
 El campo `connected: false` hace que el dashboard pause el procesamiento de datos y alertas sin desconectar el WebSocket.
@@ -172,7 +171,7 @@ requestAnimationFrame loop    │
   └─ (cada 2000 ms)→ sensorLogs → PaginaRegistros (tabla por sensor)
 
 Cambio de riskLevel → appendAlert → AlertFeed
-Cruce de umbral hum/dist → appendSensorLog → columna Registros
+Cruce de umbral hum/dist → appendSensorLog → columna Registros (hum, temp, dist)
 ```
 
 ### 5. Niveles de riesgo
@@ -193,7 +192,7 @@ Cruce de umbral hum/dist → appendSensorLog → columna Registros
 | Componente | Cantidad | Función |
 |---|---|---|
 | Arduino UNO | 1 | Microcontrolador principal |
-| DHT11 (módulo 3 pines) | 1 | Sensor de humedad ambiental |
+| DHT11 (módulo 3 pines) | 1 | Sensor de humedad y temperatura ambiental |
 | HC-SR04 | 1 | Sensor ultrasónico de distancia |
 | LED Verde | 3 | Indicador camanchaca activa |
 | LED Amarillo | 3 | Indicador vehículo en movimiento |
@@ -345,7 +344,7 @@ Aplicación React 18 + TypeScript + Vite 5 + Tailwind CSS 3.
 |---|---|---|
 | `/` | `Dashboard` | Panel principal — sensores, LEDs, gráfico, alertas |
 | `/alertas` | `PaginaAlertas` | Historial completo de eventos de riesgo |
-| `/registros` | `PaginaRegistros` | Lecturas por sensor (Humedad, Distancia, Luminosidad) |
+| `/registros` | `PaginaRegistros` | Lecturas por sensor (Humedad, Temperatura, Distancia) |
 
 ### Estado de conexión (Header)
 
@@ -452,11 +451,11 @@ Cada 200 ms el Arduino imprime una línea:
 
 ```
 === Sistema Camanchaca UCN ===
-Hum:65%  Temp:22.0C  Dist:---     -> SIN VEHICULO
-Hum:65%  Temp:22.0C  Dist:3.4cm  -> EN MOVIMIENTO [AMARILLO]
-Hum:65%  Temp:22.1C  Dist:3.1cm  -> DETENIDO [ROJO]
-Hum:82%  Temp:21.5C  Dist:---    -> SIN VEHICULO
-Hum:ERR  Temp:ERR    Dist:---    -> SIN VEHICULO
+Hum:65%  Temp:22.0C  Dist:---    -> SIN VEHICULO
+Hum:65%  Temp:22.0C  Dist:3.4cm -> EN MOVIMIENTO [AMARILLO]
+Hum:65%  Temp:22.1C  Dist:3.1cm -> DETENIDO [ROJO]
+Hum:82%  Temp:21.5C  Dist:---   -> SIN VEHICULO
+Hum:ERR  Temp:ERR    Dist:---   -> SIN VEHICULO
 ```
 
 | Campo | Descripción |
