@@ -42,7 +42,7 @@ export function SvgChart({ hum, dist }: Props) {
   const IH = H - PAD.top - PAD.bottom
 
   const humPath  = buildPath(hum,  100, IW, IH)
-  const distPath = buildPath(dist, 400, IW, IH)
+  const distPath = buildPath(dist, 10, IW, IH)
 
   const yTicks = [0, 25, 50, 75, 100]
 

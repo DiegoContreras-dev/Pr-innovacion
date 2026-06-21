@@ -9,9 +9,7 @@ const WS_PORT    = parseInt(process.env.WS_PORT    || '3001', 10)
 const BAUD       = 9600
 const CANDIDATES = (process.env.SERIAL_PORTS || '/dev/ttyUSB0,/dev/ttyACM0,/dev/ttyUSB1,/dev/ttyACM1').split(',')
 
-// Umbrales idénticos a main.cpp — NO modificar sin cambiar el firmware también
 const UMBRAL_HUM  = 80.0   // % → hum > 80 activa LEDs verdes
-const UMBRAL_DIST = 150.0  // cm → dist < 150 indica vehículo en zona
 
 // ── WebSocket server ──────────────────────────────────────────────────────────
 const wss = new WebSocketServer({ port: WS_PORT })
