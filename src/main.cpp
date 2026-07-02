@@ -11,41 +11,25 @@
 #define PIN_AMARILLO  10
 #define PIN_ROJO      11
 
-// ── Umbrales (maqueta) ────────────────────────────────────────────────────────
+// ── Umbrales ──────────────────────────────────────────────────────────────────
 #define UMBRAL_HUM_CAMANCHACA  80.0f
-#define UMBRAL_DIST_MIN_CM     10.0f
+#define UMBRAL_DIST_MIN_CM      6.0f
 #define UMBRAL_DIST_MAX_CM     12.0f
-#define UMBRAL_DETENIDO_CM      1.0f
-#define NUM_LECTURAS_HIST          5
+#define UMBRAL_DETENIDO_CM      1.0f   // variación máxima para considerar "quieto"
+#define MS_PARA_ROJO         3000UL   // ms inmóvil para activar rojo
 
 // ── Sensor DHT11 ──────────────────────────────────────────────────────────────
 DHT dht(PIN_DHT, DHT11);
 
-// ── Historial de distancias ───────────────────────────────────────────────────
-float   historial[NUM_LECTURAS_HIST];
-uint8_t idxHist   = 0;
-bool    histLleno = false;
+// ── Estado detección vehículo ─────────────────────────────────────────────────
+float         distPrevActiva = -1.0f;
+unsigned long msDetenido     = 0;
+unsigned long ultimoLoopMs   = 0;
 
-void resetHistorial() {
-    for (uint8_t i = 0; i < NUM_LECTURAS_HIST; i++) historial[i] = 0.0f;
-    idxHist   = 0;
-    histLleno = false;
-}
-
-void agregarLectura(float dist) {
-    historial[idxHist] = dist;
-    idxHist = (idxHist + 1) % NUM_LECTURAS_HIST;
-    if (idxHist == 0) histLleno = true;
-}
-
-bool vehiculoDetenido() {
-    if (!histLleno) return false;
-    float minD = historial[0], maxD = historial[0];
-    for (uint8_t i = 1; i < NUM_LECTURAS_HIST; i++) {
-        if (historial[i] < minD) minD = historial[i];
-        if (historial[i] > maxD) maxD = historial[i];
-    }
-    return (maxD - minD) <= UMBRAL_DETENIDO_CM;
+void resetEstado() {
+    distPrevActiva = -1.0f;
+    msDetenido     = 0;
+    ultimoLoopMs   = millis();
 }
 
 // ── Lectura HC-SR04 ───────────────────────────────────────────────────────────
@@ -55,7 +39,7 @@ float leerDistanciaCm(uint8_t pinTrig, uint8_t pinEcho) {
     digitalWrite(pinTrig, HIGH);
     delayMicroseconds(10);
     digitalWrite(pinTrig, LOW);
-    // timeout: 200µs burst interno + (UMBRAL_DIST_MAX_CM*2/0.0343) = ~899µs para 12cm; 1100µs da margen
+    // timeout: 200µs burst + (12cm*2/0.0343) ~899µs; 1100µs da margen
     long dur = pulseIn(pinEcho, HIGH, 1100UL);
     if (dur == 0) return -1.0f;
     return (dur * 0.0343f) / 2.0f;
@@ -82,7 +66,7 @@ void setup() {
     digitalWrite(PIN_ROJO,     LOW);
 
     dht.begin();
-    resetHistorial();
+    resetEstado();
 
     Serial.println(F("=== Sistema Camanchaca UCN ==="));
     delay(2000);
@@ -90,6 +74,10 @@ void setup() {
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 void loop() {
+    unsigned long ahora = millis();
+    unsigned long dt    = ahora - ultimoLoopMs;
+    ultimoLoopMs = ahora;
+
     // --- DHT11 ---
     float hum  = dht.readHumidity();
     float temp = dht.readTemperature();
@@ -106,7 +94,7 @@ void loop() {
     if (isnan(temp)) Serial.print(F("ERR"));
     else             { Serial.print(temp, 1); Serial.print(F("C")); }
 
-    // --- HC-SR04 x2 (disparados en secuencia para evitar interferencia acústica) ---
+    // --- HC-SR04 x2 ---
     float dist1 = leerDistanciaCm(PIN_TRIG1, PIN_ECHO1);
     delay(5);
     float dist2 = leerDistanciaCm(PIN_TRIG2, PIN_ECHO2);
@@ -123,18 +111,26 @@ void loop() {
     else           { Serial.print(dist2, 1); Serial.print(F("cm")); }
 
     if (!z1 && !z2) {
-        resetHistorial();
+        resetEstado();
         digitalWrite(PIN_AMARILLO, LOW);
         digitalWrite(PIN_ROJO,     LOW);
         Serial.println(F("  -> SIN VEHICULO"));
     } else {
-        // Distancia activa: promedio si ambos detectan, o el sensor activo
         float distActiva = (z1 && z2) ? (dist1 + dist2) / 2.0f
                          : z1         ? dist1
                          :              dist2;
-        agregarLectura(distActiva);
 
-        if (vehiculoDetenido()) {
+        // Acumula tiempo inmóvil; resetea si se movió más de UMBRAL_DETENIDO_CM
+        if (distPrevActiva >= 0.0f &&
+            distActiva >= distPrevActiva - UMBRAL_DETENIDO_CM &&
+            distActiva <= distPrevActiva + UMBRAL_DETENIDO_CM) {
+            msDetenido += dt;
+        } else {
+            msDetenido = 0;
+        }
+        distPrevActiva = distActiva;
+
+        if (msDetenido >= MS_PARA_ROJO) {
             digitalWrite(PIN_AMARILLO, LOW);
             digitalWrite(PIN_ROJO,     HIGH);
             Serial.println(F("  -> DETENIDO [ROJO]"));
