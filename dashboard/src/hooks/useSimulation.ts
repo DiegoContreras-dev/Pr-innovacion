@@ -7,8 +7,8 @@ import type {
 const HIST_LEN = 60
 
 const UMBRAL_HUM      = 80   // % — debe coincidir con firmware UMBRAL_HUM_CAMANCHACA y bridge UMBRAL_HUM
-const UMBRAL_DIST_MIN = 2    // cm — debe coincidir con firmware UMBRAL_DIST_MIN_CM
-const UMBRAL_DIST_MAX = 15   // cm — debe coincidir con firmware UMBRAL_DIST_MAX_CM
+const UMBRAL_DIST_MIN = 10   // cm — debe coincidir con firmware UMBRAL_DIST_MIN_CM
+const UMBRAL_DIST_MAX = 12   // cm — debe coincidir con firmware UMBRAL_DIST_MAX_CM
 
 const ALERT_MESSAGES: Record<RiskLevel, string> = {
   standby:    'Sistema en standby — Sin condiciones críticas',
