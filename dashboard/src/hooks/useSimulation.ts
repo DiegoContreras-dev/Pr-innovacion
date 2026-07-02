@@ -181,10 +181,10 @@ export function useSimulation() {
         if (humZone === 'fog') appendSensorLog('hum', `${hum.toFixed(0)}%`, 'Umbral niebla superado (>80%) — LEDs verdes ON', 'warn')
         else                   appendSensorLog('hum', `${hum.toFixed(0)}%`, 'Humedad bajo umbral (<80%) — LEDs verdes OFF', 'normal')
       }
-      const distZone: 'dentro' | 'fuera' = dist > 0 && dist < 150 ? 'dentro' : 'fuera'
+      const distZone: 'dentro' | 'fuera' = dist > 0 && dist < 5 ? 'dentro' : 'fuera'
       if (distZone !== t.prevDistZone) {
         t.prevDistZone = distZone
-        if (distZone === 'dentro') appendSensorLog('dist', `${dist.toFixed(0)}cm`, 'Vehículo entró a zona de detección (<150cm)', 'warn')
+        if (distZone === 'dentro') appendSensorLog('dist', `${dist.toFixed(0)}cm`, 'Vehículo entró a zona de detección (<5cm)', 'warn')
         else                       appendSensorLog('dist', `${dist.toFixed(0)}cm`, 'Vehículo fuera de zona de detección', 'normal')
       }
 
