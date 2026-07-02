@@ -53,7 +53,9 @@ export interface BridgeMessage {
   event?:    'arduino_connected' | 'arduino_disconnected'
   hum:       number | null   // null cuando DHT11 falla (Hum:ERR)
   temp:      number | null   // null cuando DHT11 falla (Temp:ERR)
-  dist:      number | null   // null cuando HC-SR04 sin eco (Dist:---)
+  dist:      number | null   // null cuando ambos HC-SR04 sin eco; promedio si ambos detectan
+  dist1:     number | null   // sensor 1 (S1:)
+  dist2:     number | null   // sensor 2 (S2:)
   ledGreen:  boolean
   ledYellow: boolean
   ledRed:    boolean
