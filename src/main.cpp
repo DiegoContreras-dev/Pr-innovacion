@@ -14,7 +14,7 @@
 // ── Umbrales (maqueta) ────────────────────────────────────────────────────────
 #define UMBRAL_HUM_CAMANCHACA  80.0f
 #define UMBRAL_DIST_MIN_CM      2.0f
-#define UMBRAL_DIST_MAX_CM      6.0f
+#define UMBRAL_DIST_MAX_CM     15.0f
 #define UMBRAL_DETENIDO_CM      1.0f
 #define NUM_LECTURAS_HIST          5
 
@@ -55,7 +55,8 @@ float leerDistanciaCm(uint8_t pinTrig, uint8_t pinEcho) {
     digitalWrite(pinTrig, HIGH);
     delayMicroseconds(10);
     digitalWrite(pinTrig, LOW);
-    long dur = pulseIn(pinEcho, HIGH, 400UL);   // timeout ~6.9 cm
+    // timeout: 200µs burst interno + (UMBRAL_DIST_MAX_CM*2/0.0343) = ~1075µs para 15cm; 1200µs da margen
+    long dur = pulseIn(pinEcho, HIGH, 1200UL);
     if (dur == 0) return -1.0f;
     return (dur * 0.0343f) / 2.0f;
 }
