@@ -9,7 +9,7 @@ const WS_PORT    = parseInt(process.env.WS_PORT    || '3001', 10)
 const BAUD       = 9600
 const CANDIDATES = (process.env.SERIAL_PORTS || '/dev/ttyUSB0,/dev/ttyACM0,/dev/ttyUSB1,/dev/ttyACM1').split(',')
 
-const UMBRAL_HUM  = 80.0   // % → hum > 80 activa LEDs verdes
+const UMBRAL_HUM  = 75.0   // % → hum >= 75 activa LEDs verdes (niebla leve)
 
 // ── WebSocket server ──────────────────────────────────────────────────────────
 const wss = new WebSocketServer({ port: WS_PORT })
@@ -42,7 +42,7 @@ function parseLine(line) {
 
   // LED states — leídos directamente del texto que imprime el Arduino.
   // El Arduino ya tomó la decisión; el bridge solo la re-publica.
-  const ledGreen  = hum !== null && hum > UMBRAL_HUM
+  const ledGreen  = hum !== null && hum >= UMBRAL_HUM
   const ledYellow = line.includes('EN MOVIMIENTO')
   const ledRed    = line.includes('DETENIDO [ROJO]')
 

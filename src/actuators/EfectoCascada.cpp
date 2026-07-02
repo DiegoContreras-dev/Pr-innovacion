@@ -1,6 +1,9 @@
 #include "actuators/EfectoCascada.h"
 #include <avr/pgmspace.h>
 
+// File-scope: PROGMEM en local static no se ubica en Flash en AVR-GCC
+static const uint8_t FACTORES[] PROGMEM = { 255, 127, 50 };
+
 EfectoCascada::EfectoCascada(Adafruit_NeoPixel& strip, uint16_t intervaloMs)
     : _strip(strip), _intervaloMs(intervaloMs), _indice(0), _tUltimo(0) {}
 
@@ -11,7 +14,6 @@ void EfectoCascada::actualizar(uint32_t color, unsigned long ahora) {
     _strip.clear();
 
     // LED activo + rastro de 2 LEDs con brillo decreciente (100% → 50% → 20%)
-    static const uint8_t FACTORES[] PROGMEM = { 255, 127, 50 };
     int total = _strip.numPixels();
 
     for (int trail = 0; trail < 3; trail++) {

@@ -6,6 +6,10 @@ import type {
 
 const HIST_LEN = 60
 
+const UMBRAL_HUM      = 75   // % — debe coincidir con firmware UMBRAL_HUM_CAMANCHACA y bridge UMBRAL_HUM
+const UMBRAL_DIST_MIN = 2    // cm — debe coincidir con firmware UMBRAL_DIST_MIN_CM
+const UMBRAL_DIST_MAX = 5    // cm — debe coincidir con firmware UMBRAL_DIST_MAX_CM
+
 const ALERT_MESSAGES: Record<RiskLevel, string> = {
   standby:    'Sistema en standby — Sin condiciones críticas',
   normal:     'Camanchaca detectada — LEDs verdes de guiado activos',
@@ -175,16 +179,16 @@ export function useSimulation() {
       }
 
       // Logs de cruce de umbral
-      const humZone: 'fog' | 'normal' = hum > 80 ? 'fog' : 'normal'
+      const humZone: 'fog' | 'normal' = hum >= UMBRAL_HUM ? 'fog' : 'normal'
       if (humZone !== t.prevHumZone) {
         t.prevHumZone = humZone
-        if (humZone === 'fog') appendSensorLog('hum', `${hum.toFixed(0)}%`, 'Umbral niebla superado (>80%) — LEDs verdes ON', 'warn')
-        else                   appendSensorLog('hum', `${hum.toFixed(0)}%`, 'Humedad bajo umbral (<80%) — LEDs verdes OFF', 'normal')
+        if (humZone === 'fog') appendSensorLog('hum', `${hum.toFixed(0)}%`, `Umbral niebla superado (>=${UMBRAL_HUM}%) — LEDs verdes ON`, 'warn')
+        else                   appendSensorLog('hum', `${hum.toFixed(0)}%`, `Humedad bajo umbral (<${UMBRAL_HUM}%) — LEDs verdes OFF`, 'normal')
       }
-      const distZone: 'dentro' | 'fuera' = dist > 0 && dist < 5 ? 'dentro' : 'fuera'
+      const distZone: 'dentro' | 'fuera' = dist >= UMBRAL_DIST_MIN && dist <= UMBRAL_DIST_MAX ? 'dentro' : 'fuera'
       if (distZone !== t.prevDistZone) {
         t.prevDistZone = distZone
-        if (distZone === 'dentro') appendSensorLog('dist', `${dist.toFixed(0)}cm`, 'Vehículo entró a zona de detección (<5cm)', 'warn')
+        if (distZone === 'dentro') appendSensorLog('dist', `${dist.toFixed(0)}cm`, `Vehículo entró a zona de detección (${UMBRAL_DIST_MIN}–${UMBRAL_DIST_MAX}cm)`, 'warn')
         else                       appendSensorLog('dist', `${dist.toFixed(0)}cm`, 'Vehículo fuera de zona de detección', 'normal')
       }
 
@@ -192,7 +196,7 @@ export function useSimulation() {
       t.sensorTimer += dt
       if (t.sensorTimer >= 2000) {
         t.sensorTimer = 0
-        const humType:  SensorLogEntry['type'] = hum  > 80 ? 'warn' : 'normal'
+        const humType:  SensorLogEntry['type'] = hum >= UMBRAL_HUM ? 'warn' : 'normal'
         const tempType: SensorLogEntry['type'] = temp > 30 ? 'warn' : 'normal'
         const distType: SensorLogEntry['type'] = t.ledRed ? 'err' : t.ledYellow ? 'warn' : 'normal'
         appendSensorLog('hum',  `${hum.toFixed(0)}%`,               'Lectura DHT11 — Humedad ambiental',    humType)
@@ -212,18 +216,12 @@ export function useSimulation() {
         })
       }
 
-      // Monitor serial (500ms)
+      // Monitor serial (500ms) — reenvía la línea real del firmware via bd.raw
       t.serialTimer += dt
       if (t.serialTimer >= 500) {
         t.serialTimer = 0
-        const logType:  LogEntry['type'] = t.ledRed ? 'err' : t.ledYellow ? 'warn' : 'normal'
-        const humStr  = hum  > 0 ? `${hum.toFixed(0)}%`   : '---'
-        const tempStr = temp > 0 ? `${temp.toFixed(1)}°C`  : '---'
-        const distStr = dist > 0 ? `${dist.toFixed(1)}cm`  : '---'
-        const estado  = t.ledRed    ? '-> DETENIDO [ROJO]'
-                      : t.ledYellow ? '-> EN MOVIMIENTO [AMARILLO]'
-                      :               '-> SIN VEHICULO'
-        appendLog(`Hum:${humStr}  Temp:${tempStr}  Dist:${distStr}  ${estado}`, logType)
+        const logType: LogEntry['type'] = t.ledRed ? 'err' : t.ledYellow ? 'warn' : 'normal'
+        if (bd.raw) appendLog(bd.raw, logType)
       }
 
       // Historial (1s)

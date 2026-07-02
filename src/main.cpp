@@ -10,7 +10,7 @@
 #define PIN_ROJO     11
 
 // ── Umbrales ──────────────────────────────────────────────────────────────────
-#define UMBRAL_HUM_CAMANCHACA  80.0f   // % → verdes ON
+#define UMBRAL_HUM_CAMANCHACA  75.0f   // % → verdes ON (niebla leve o superior)
 #define UMBRAL_DIST_MIN_CM      2.0f   // cm → límite inferior HC-SR04
 #define UMBRAL_DIST_MAX_CM      5.0f   // cm → límite superior zona de detección
 #define UMBRAL_DETENIDO_CM      1.0f   // variación máxima para considerar detenido
@@ -53,7 +53,9 @@ float leerDistanciaCm() {
     digitalWrite(PIN_TRIG, HIGH);
     delayMicroseconds(10);
     digitalWrite(PIN_TRIG, LOW);
-    long dur = pulseIn(PIN_ECHO, HIGH, 600UL);   // timeout ~10 cm, descartar objetos lejanos
+    // timeout = UMBRAL_DIST_MAX_CM * 2 / 0.0343 ≈ 292 µs; 600 µs da margen ×2 (~10 cm max)
+    // Si se sube UMBRAL_DIST_MAX_CM, actualizar también este timeout.
+    long dur = pulseIn(PIN_ECHO, HIGH, 600UL);
     if (dur == 0) return -1.0f;
     return (dur * 0.0343f) / 2.0f;
 }
@@ -89,7 +91,7 @@ void loop() {
         digitalWrite(PIN_VERDE, LOW);
         Serial.print(F("Hum:ERR"));
     } else {
-        digitalWrite(PIN_VERDE, hum > UMBRAL_HUM_CAMANCHACA ? HIGH : LOW);
+        digitalWrite(PIN_VERDE, hum >= UMBRAL_HUM_CAMANCHACA ? HIGH : LOW);
         Serial.print(F("Hum:"));
         Serial.print(hum, 0);
         Serial.print(F("%"));
@@ -106,7 +108,10 @@ void loop() {
     if (dist < 0) Serial.print(F("---"));
     else { Serial.print(dist, 1); Serial.print(F("cm")); }
 
-    if (dist < UMBRAL_DIST_MIN_CM || dist > UMBRAL_DIST_MAX_CM) {
+    if (dist < 0) {
+        // Timeout del sensor: mantiene estado anterior sin tocar historial ni LEDs
+        Serial.println(F("  -> SIN SEÑAL"));
+    } else if (dist < UMBRAL_DIST_MIN_CM || dist > UMBRAL_DIST_MAX_CM) {
         // Fuera de rango → sin vehículo, resetear historial
         resetHistorial();
         digitalWrite(PIN_AMARILLO, LOW);
