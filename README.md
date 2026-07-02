@@ -30,7 +30,7 @@ La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de l
 - En 2025 la Región de Coquimbo registró un aumento del **62%** en muertes por accidentes
 - El 60% de las muertes ocurre en zonas rurales
 
-**La solución:** módulos LED instalados sobre los guardavías, controlados por Arduino UNO. El sistema detecta humedad (camanchaca) y presencia/estado de vehículos, comunicando el nivel de riesgo mediante codificación cromática. Un dashboard web muestra el estado del sistema en tiempo real leyendo los datos directamente del Arduino por puerto serie.
+**La solución:** módulos LED instalados sobre los guardavías, controlados por Arduino UNO. El sistema detecta humedad (camanchaca) y presencia/estado de vehículos mediante dos sensores ultrasónicos, comunicando el nivel de riesgo mediante codificación cromática. Un dashboard web muestra el estado del sistema en tiempo real leyendo los datos directamente del Arduino por puerto serie.
 
 ---
 
@@ -40,26 +40,27 @@ La **camanchaca** es una niebla costera densa que afecta rutas interurbanas de l
 ┌─────────────────────────────────────────────────────────────────┐
 │                        HARDWARE                                  │
 │                                                                  │
-│   DHT11  ──→ D2    ┐                                            │
-│   HC-SR04 ──→ D7/D8 ├── Arduino UNO ──→ USB ──→ /dev/ttyUSB0   │
-│                    ┘       │                                     │
-│   D6  → LED Verde          │ Serial 9600 baud                   │
-│   D10 → LED Amarillo       │ "Hum:73%  Temp:22.5C  Dist:3.4cm  │
-│   D11 → LED Rojo           │  -> EN MOVIMIENTO [AMARILLO]"      │
-└────────────────────────────┼────────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
+│   DHT11     ──→ D2      ┐                                       │
+│   HC-SR04①  ──→ D7/D8  ├── Arduino UNO ──→ USB ──→ /dev/ttyUSB0│
+│   HC-SR04②  ──→ D3/D4  ┘     │                                  │
+│                               │                                  │
+│    D6  → LED Verde            │ Serial 9600 baud                │
+│    D10 → LED Amarillo         │ "Hum:73%  Temp:22.5C            │
+│    D11 → LED Rojo             │  S1:3.4cm  S2:4.1cm  -> ..."   │
+└──────────────────────────────┼──────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────┐
 │                    BRIDGE  (Node.js)                             │
 │                    bridge/src/index.js                           │
 │                                                                  │
 │  • Lee el puerto serie del Arduino (serialport v12)             │
-│  • Parsea cada línea y extrae: hum, temp, dist, LEDs, riskLevel │
+│  • Parsea S1:/S2: y extrae: hum, temp, dist1, dist2, LEDs       │
 │  • Si no hay hardware → heartbeat "connected: false" cada 3s    │
 │  • Emite JSON por WebSocket en :3001                             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ ws://bridge:3001
-                             │ (nginx proxy /ws)
-┌────────────────────────────▼────────────────────────────────────┐
+└──────────────────────────────┬──────────────────────────────────┘
+                               │ ws://bridge:3001
+                               │ (nginx proxy /ws)
+┌──────────────────────────────▼──────────────────────────────────┐
 │                   DASHBOARD  (React 18 + Vite)                   │
 │                   dashboard/src/                                 │
 │                                                                  │
@@ -102,7 +103,7 @@ Pr-innovacion/
 
 ## Flujo de funcionamiento
 
-### 1. Lectura de sensores (Arduino, cada 200 ms)
+### 1. Lectura de sensores (Arduino, cada 100 ms)
 
 ```
 DHT11 → dht.readHumidity() + dht.readTemperature()
@@ -110,27 +111,27 @@ DHT11 → dht.readHumidity() + dht.readTemperature()
            ├─ hum > 80% → LED Verde ON  (camanchaca detectada)
            └─ hum ≤ 80% → LED Verde OFF
 
-HC-SR04 → pulseIn(timeout=600µs) → distancia en cm (~10 cm máximo útil)
+HC-SR04① → pulseIn() → dist1 en cm  (timeout 600 µs ≈ 10 cm máximo)
+  [gap 5 ms]                          ← evita interferencia acústica entre sensores
+HC-SR04② → pulseIn() → dist2 en cm
+
+           ├─ ambos fuera de rango (< 2 cm o > 5 cm) → SIN VEHÍCULO → LEDs OFF + reset historial
            │
-           ├─ dist < 2 cm o dist > 5 cm → SIN VEHICULO → LEDs amarillo/rojo OFF
-           │                                               reset historial 5 lecturas
-           └─ 2 cm ≤ dist ≤ 5 cm → vehículo en zona → acumula últimas 5 lecturas
+           └─ alguno en rango (2–5 cm) →
+                  distActiva = promedio(dist1, dist2)  si ambos en zona
+                             = dist1 o dist2           si solo uno activo
+                  acumula últimas 5 lecturas
                                │
                                ├─ (max − min) > 1 cm → EN MOVIMIENTO → LED Amarillo ON
                                └─ (max − min) ≤ 1 cm → DETENIDO      → LED Rojo ON
 ```
 
-> **Escala de prototipo:** la zona de detección (2–5 cm) simula en banco de pruebas lo que en la ruta real sería un rango de metros. El timeout de 600 µs limita físicamente el HC-SR04 a ~10 cm en este firmware.
-
-### 2. Salida serial (9600 baud, cada 200 ms)
+### 2. Salida serial (9600 baud, cada 100 ms)
 
 ```
-=== Sistema Camanchaca UCN ===        ← solo al arrancar
-Hum:65%  Temp:22.0C  Dist:---        -> SIN VEHICULO
-Hum:65%  Temp:22.0C  Dist:3.4cm     -> EN MOVIMIENTO [AMARILLO]
-Hum:65%  Temp:22.1C  Dist:3.1cm     -> DETENIDO [ROJO]
-Hum:82%  Temp:21.5C  Dist:---       -> SIN VEHICULO
-Hum:ERR  Temp:ERR    Dist:---        -> SIN VEHICULO
+Hum:73%  Temp:22.5C  S1:3.4cm  S2:4.1cm  -> EN MOVIMIENTO [AMARILLO]
+Hum:85%  Temp:21.0C  S1:3.1cm  S2:3.3cm  -> DETENIDO [ROJO]
+Hum:60%  Temp:23.0C  S1:---    S2:---    -> SIN VEHICULO
 ```
 
 | Campo | Descripción |
@@ -145,10 +146,10 @@ Hum:ERR  Temp:ERR    Dist:---        -> SIN VEHICULO
 ```
 Línea serial → parseLine()
                  │
-                 ├─ Regex extrae hum, temp, dist como números (null si ERR/---)
-                 ├─ Lee estado LED del texto ("EN MOVIMIENTO", "DETENIDO [ROJO]")
-                 ├─ Calcula ledGreen: hum !== null && hum > 80
-                 ├─ Calcula riskLevel: alerta > precaucion > normal > standby
+                 ├─ Extrae hum, temp, dist1, dist2
+                 ├─ dist = promedio(dist1, dist2) si ambos presentes, o el activo
+                 ├─ Lee estado LED del texto ("EN MOVIMIENTO", "DETENIDO")
+                 ├─ Calcula riskLevel: standby | normal | precaucion | alerta
                  └─ broadcast JSON → todos los clientes WebSocket conectados
 ```
 
@@ -157,14 +158,17 @@ Línea serial → parseLine()
 ```json
 {
   "connected": true,
-  "hum": 65,
-  "temp": 22.0,
-  "dist": 3.4,
+  "hum": 73,
+  "temp": 22.5,
+  "dist": 3.75,
+  "dist1": 3.4,
+  "dist2": 4.1,
   "ledGreen": false,
   "ledYellow": true,
   "ledRed": false,
   "riskLevel": "precaucion",
-  "raw": "Hum:65%  Temp:22.0C  Dist:3.4cm  -> EN MOVIMIENTO [AMARILLO]",
+  "raw": "Hum:73%  Temp:22.5C  S1:3.4cm  S2:4.1cm  -> EN MOVIMIENTO [AMARILLO]",
+  "source": "hardware",
   "ts": 1717800000000
 }
 ```
@@ -172,14 +176,7 @@ Línea serial → parseLine()
 Cuando no hay Arduino, el bridge emite heartbeat cada 3 s:
 
 ```json
-{
-  "connected": false,
-  "hum": null, "temp": null, "dist": null,
-  "ledGreen": false, "ledYellow": false, "ledRed": false,
-  "riskLevel": "standby",
-  "raw": "",
-  "ts": 1717800000000
-}
+{ "connected": false, "hum": null, "temp": null, "dist": null, "dist1": null, "dist2": null, "ledGreen": false, "ledYellow": false, "ledRed": false, "riskLevel": "standby", "raw": "", "ts": 1717800000000 }
 ```
 
 `connected: false` pausa el procesamiento de datos y alertas en el dashboard sin cerrar la conexión WebSocket.
@@ -216,9 +213,9 @@ Cruce de umbral hum/dist → appendSensorLog → PaginaRegistros
 
 | Componente | Cantidad | Función |
 |---|---|---|
-| Arduino UNO | 1 | Microcontrolador principal (ATmega328P, 32 KB flash, 2 KB RAM) |
-| DHT11 (módulo 3 pines) | 1 | Sensor de humedad y temperatura |
-| HC-SR04 | 1 | Sensor ultrasónico de distancia |
+| Arduino UNO | 1 | Microcontrolador principal |
+| DHT11 (módulo 3 pines) | 1 | Sensor de humedad ambiental |
+| HC-SR04 | 2 | Sensores ultrasónicos de distancia (S1 y S2) |
 | LED Verde | 3 | Indicador camanchaca activa |
 | LED Amarillo | 3 | Indicador vehículo en movimiento |
 | LED Rojo | 3 | Indicador vehículo detenido |
@@ -232,8 +229,11 @@ Arduino UNO
 │
 ├── D2  ─────────────── DHT11 DATA (señal)
 │
-├── D7  ─────────────── HC-SR04 TRIG
-├── D8  ─────────────── HC-SR04 ECHO
+├── D7  ────────────── HC-SR04 S1 TRIG
+├── D8  ────────────── HC-SR04 S1 ECHO
+│
+├── D3  ────────────── HC-SR04 S2 TRIG
+├── D4  ────────────── HC-SR04 S2 ECHO
 │
 ├── D6  ── [220Ω] ──┬── LED Verde    (+)
 │                   ├── LED Verde    (+)   × 3 en paralelo
@@ -247,8 +247,8 @@ Arduino UNO
 │                   ├── LED Rojo    (+)    × 3 en paralelo
 │                   └── LED Rojo    (+)
 │
-├── 5V  ─────────────── DHT11 VCC · HC-SR04 VCC
-└── GND ─────────────── DHT11 GND · HC-SR04 GND · cátodos de todos los LEDs
+├── 5V  ────────────── DHT11 VCC · HC-SR04 S1 VCC · HC-SR04 S2 VCC
+└── GND ────────────── DHT11 GND · HC-SR04 S1 GND · HC-SR04 S2 GND · LEDs (−)
 ```
 
 ### Tabla de pines
@@ -256,17 +256,19 @@ Arduino UNO
 | Pin Arduino | Componente | Dirección |
 |---|---|---|
 | `D2` | DHT11 DATA | INPUT |
-| `D7` | HC-SR04 TRIG | OUTPUT |
-| `D8` | HC-SR04 ECHO | INPUT |
-| `D6` | LEDs Verdes (×3) | OUTPUT |
-| `D10` | LEDs Amarillos (×3) | OUTPUT |
-| `D11` | LEDs Rojos (×3) | OUTPUT |
-| `5V` | DHT11 VCC, HC-SR04 VCC | Alimentación |
-| `GND` | DHT11 GND, HC-SR04 GND, cátodos LEDs | Tierra |
+| `D7` | HC-SR04 S1 TRIG | OUTPUT |
+| `D8` | HC-SR04 S1 ECHO | INPUT |
+| `D3` | HC-SR04 S2 TRIG | OUTPUT |
+| `D4` | HC-SR04 S2 ECHO | INPUT |
+| `D6` | LEDs Verdes | OUTPUT |
+| `D10` | LEDs Amarillos | OUTPUT |
+| `D11` | LEDs Rojos | OUTPUT |
+| `5V` | DHT11 VCC, HC-SR04 S1/S2 VCC | Alimentación |
+| `GND` | DHT11 GND, HC-SR04 S1/S2 GND, LEDs cátodos | Tierra |
 
 > **DHT11:** El módulo KY-015 de 3 pines tiene el orden S–V+–G (señal primero). No confundir con el sensor bare de 4 pines que tiene un pin NC en el medio.
 
-> **HC-SR04:** Requiere 5V obligatoriamente. El pin ECHO entrega 5V, compatible con Arduino UNO directamente sin divisor de tensión.
+> **HC-SR04:** Requiere alimentación a **5V obligatoriamente**. El pin ECHO entrega 5V, compatible con Arduino UNO directamente sin divisor de tensión. Los dos sensores se disparan en **secuencia** (no simultáneamente) con un gap de 5 ms para evitar interferencia acústica entre sí.
 
 ---
 
@@ -351,12 +353,11 @@ El bridge (`bridge/src/index.js`) es un proceso Node.js intermediario entre el A
 
 ### Responsabilidades
 
-1. **Detecta el puerto serie** — prueba en orden: `/dev/ttyUSB0`, `/dev/ttyACM0`, `/dev/ttyUSB1`, `/dev/ttyACM1`
-2. **Parsea cada línea** del Arduino al formato JSON que consume el dashboard
-3. **Decide el estado de conexión** — emite `arduino_connected` con la primera línea válida; `arduino_disconnected` al perder el puerto
-4. **Heartbeat** — si no hay Arduino, emite `{ connected: false }` cada 3 s
-5. **Reconecta automáticamente** cada 3 s si el Arduino se desconecta
-6. **Broadcast JSON** por WebSocket en el puerto `3001`
+1. **Detecta el puerto serie** — prueba `/dev/ttyUSB0`, `/dev/ttyACM0`, `/dev/ttyUSB1`, `/dev/ttyACM1` en orden
+2. **Parsea cada línea** del Arduino — extrae `S1:`, `S2:`, `Hum:`, `Temp:` y el estado de LEDs
+3. **Heartbeat** — si no hay Arduino, emite `{ connected: false }` cada 3 s para que el dashboard sepa que está en espera
+4. **Reconecta** automáticamente si el Arduino se desconecta (reintento cada 3 s)
+5. **Emite JSON** por WebSocket en el puerto `3001`
 
 ### Variables de entorno
 
@@ -512,21 +513,28 @@ SERIAL_PORTS=/dev/ttyACM0 WS_PORT=3001 node src/index.js
 
 ## Monitor serial
 
-El Arduino imprime una línea cada 200 ms. Para verla directamente:
-
-```bash
-pio device monitor   # 9600 baud — Ctrl+C para salir
-```
-
-Ejemplo de salida:
+Cada 100 ms el Arduino imprime una línea:
 
 ```
 === Sistema Camanchaca UCN ===
-Hum:65%  Temp:22.0C  Dist:---      -> SIN VEHICULO
-Hum:65%  Temp:22.0C  Dist:3.4cm   -> EN MOVIMIENTO [AMARILLO]
-Hum:65%  Temp:22.1C  Dist:3.1cm   -> DETENIDO [ROJO]
-Hum:82%  Temp:21.5C  Dist:---     -> SIN VEHICULO
-Hum:ERR  Temp:ERR    Dist:---      -> SIN VEHICULO
+Hum:65%  Temp:22.0C  S1:---    S2:---    -> SIN VEHICULO
+Hum:65%  Temp:22.0C  S1:3.4cm  S2:4.1cm  -> EN MOVIMIENTO [AMARILLO]
+Hum:65%  Temp:22.1C  S1:3.1cm  S2:3.3cm  -> DETENIDO [ROJO]
+Hum:82%  Temp:21.5C  S1:---    S2:---    -> SIN VEHICULO
+Hum:ERR  Temp:ERR    S1:---    S2:---    -> SIN VEHICULO
+```
+
+| Campo | Descripción |
+|---|---|
+| `Hum:XX%` | Humedad relativa del DHT11. `ERR` si el sensor falla. |
+| `Temp:XX.XC` | Temperatura en °C del DHT11. `ERR` si el sensor falla. |
+| `S1:XX.Xcm` | Distancia del HC-SR04 sensor 1. `---` si no hay eco. |
+| `S2:XX.Xcm` | Distancia del HC-SR04 sensor 2. `---` si no hay eco. |
+| `-> ESTADO` | Estado actual: `SIN VEHICULO`, `EN MOVIMIENTO [AMARILLO]`, `DETENIDO [ROJO]` |
+
+Ver en PlatformIO:
+```bash
+pio device monitor   # 9600 baud — Ctrl+C para salir
 ```
 
 ---

@@ -9,6 +9,7 @@ const WS_PORT    = parseInt(process.env.WS_PORT    || '3001', 10)
 const BAUD       = 9600
 const CANDIDATES = (process.env.SERIAL_PORTS || '/dev/ttyUSB0,/dev/ttyACM0,/dev/ttyUSB1,/dev/ttyACM1').split(',')
 
+// Umbral idéntico a main.cpp — NO modificar sin cambiar el firmware también
 const UMBRAL_HUM  = 80.0   // % → hum > 80 activa LEDs verdes
 
 // ── WebSocket server ──────────────────────────────────────────────────────────
@@ -23,25 +24,30 @@ function broadcast(payload) {
 }
 
 // ── Parser de línea serial del Arduino ───────────────────────────────────────
-// Formato Arduino: "Hum:73%  Temp:22.5C  Dist:4.2cm  -> EN MOVIMIENTO [AMARILLO]"
-// Solo se brodcastean líneas que contengan datos de sensor (Hum: + Dist:).
-// La línea de inicio "=== Sistema Camanchaca UCN ===" se descarta.
+// Formato firmware dual: "Hum:73%  Temp:22.5C  S1:3.4cm  S2:4.1cm  -> EN MOVIMIENTO [AMARILLO]"
+// Compat firmware anterior:  "Hum:73%  Temp:22.5C  Dist:3.4cm  -> EN MOVIMIENTO [AMARILLO]"
 function parseLine(line) {
-  const humMatch  = line.match(/Hum:([\d.]+)%/)
-  const tempMatch = line.match(/Temp:([\d.]+)C/)
-  const distMatch = line.match(/Dist:([\d.]+)cm/)
+  const humMatch   = line.match(/Hum:([\d.]+)%/)
+  const tempMatch  = line.match(/Temp:([\d.]+)C/)
+  const dist1Match = line.match(/S1:([\d.]+)cm/)
+  const dist2Match = line.match(/S2:([\d.]+)cm/)
+  const distMatch  = line.match(/Dist:([\d.]+)cm/)  // compat firmware anterior
 
-  // Descartar líneas sin datos de sensor (ej: línea de inicio "=== Sistema ===")
-  // "Hum:ERR" y "Dist:---" no tienen número pero SÍ son líneas de sensor válidas
-  const isSensorLine = line.includes('Hum:') || line.includes('Dist:')
+  const isSensorLine = line.includes('Hum:') || line.includes('S1:') ||
+                       line.includes('S2:')   || line.includes('Dist:')
   if (!isSensorLine) return null
 
-  const hum  = humMatch  ? parseFloat(humMatch[1]) : null
-  const temp = tempMatch ? parseFloat(tempMatch[1]) : null
-  const dist = distMatch ? parseFloat(distMatch[1]) : null
+  const hum   = humMatch   ? parseFloat(humMatch[1])   : null
+  const temp  = tempMatch  ? parseFloat(tempMatch[1])  : null
+  const dist1 = dist1Match ? parseFloat(dist1Match[1]) : null
+  const dist2 = dist2Match ? parseFloat(dist2Match[1]) : null
 
-  // LED states — leídos directamente del texto que imprime el Arduino.
-  // El Arduino ya tomó la decisión; el bridge solo la re-publica.
+  // dist: valor combinado para compatibilidad con el dashboard existente
+  const dist = distMatch               ? parseFloat(distMatch[1])
+             : dist1 !== null && dist2 !== null ? (dist1 + dist2) / 2
+             : dist1 !== null          ? dist1
+             :                           dist2
+
   const ledGreen  = hum !== null && hum > UMBRAL_HUM
   const ledYellow = line.includes('EN MOVIMIENTO')
   const ledRed    = line.includes('DETENIDO [ROJO]')
@@ -53,7 +59,7 @@ function parseLine(line) {
 
   return {
     connected: true,
-    hum, temp, dist,
+    hum, temp, dist, dist1, dist2,
     ledGreen, ledYellow, ledRed,
     riskLevel,
     raw: line.trim(),
@@ -63,7 +69,7 @@ function parseLine(line) {
 
 const HEARTBEAT_PAYLOAD = {
   connected: false,
-  hum: null, temp: null, dist: null,
+  hum: null, temp: null, dist: null, dist1: null, dist2: null,
   ledGreen: false, ledYellow: false, ledRed: false,
   riskLevel: 'standby',
   raw: '',
@@ -111,9 +117,7 @@ async function startSerial() {
 
   const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }))
 
-  // Solo notificar "conectado" cuando llega la primera línea de sensor válida
   let confirmed = false
-  // Flag para evitar doble llamada de onDisconnect (error → close → error)
   let gone = false
 
   const onDisconnect = () => {
