@@ -16,7 +16,7 @@
 #define UMBRAL_DIST_MIN_CM      2.0f
 #define UMBRAL_DIST_MAX_CM     18.0f
 #define UMBRAL_DETENIDO_CM      1.0f   // variación máxima para considerar "quieto"
-#define MS_PARA_ROJO         3000UL   // ms inmóvil para activar rojo
+#define MS_PARA_ROJO         2500UL   // ms inmóvil para activar rojo
 
 // ── Sensor DHT11 ──────────────────────────────────────────────────────────────
 DHT dht(PIN_DHT, DHT11);
