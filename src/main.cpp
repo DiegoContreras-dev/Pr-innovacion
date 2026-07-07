@@ -13,8 +13,8 @@
 
 // ── Umbrales ──────────────────────────────────────────────────────────────────
 #define UMBRAL_HUM_CAMANCHACA  80.0f
-#define UMBRAL_DIST_MIN_CM      6.0f
-#define UMBRAL_DIST_MAX_CM     12.0f
+#define UMBRAL_DIST_MIN_CM      2.0f
+#define UMBRAL_DIST_MAX_CM     18.0f
 #define UMBRAL_DETENIDO_CM      1.0f   // variación máxima para considerar "quieto"
 #define MS_PARA_ROJO         3000UL   // ms inmóvil para activar rojo
 
@@ -39,8 +39,8 @@ float leerDistanciaCm(uint8_t pinTrig, uint8_t pinEcho) {
     digitalWrite(pinTrig, HIGH);
     delayMicroseconds(10);
     digitalWrite(pinTrig, LOW);
-    // timeout: 200µs burst + (12cm*2/0.0343) ~899µs; 1100µs da margen
-    long dur = pulseIn(pinEcho, HIGH, 1100UL);
+    // timeout: 200µs burst + (18cm*2/0.0343) ~1250µs; 1450µs da margen
+    long dur = pulseIn(pinEcho, HIGH, 1450UL);
     if (dur == 0) return -1.0f;
     return (dur * 0.0343f) / 2.0f;
 }
@@ -82,13 +82,10 @@ void loop() {
     float hum  = dht.readHumidity();
     float temp = dht.readTemperature();
 
-    if (isnan(hum)) {
-        digitalWrite(PIN_VERDE, LOW);
-        Serial.print(F("Hum:ERR"));
-    } else {
-        digitalWrite(PIN_VERDE, hum > UMBRAL_HUM_CAMANCHACA ? HIGH : LOW);
-        Serial.print(F("Hum:")); Serial.print(hum, 0); Serial.print(F("%"));
-    }
+    bool humAlta = !isnan(hum) && hum > UMBRAL_HUM_CAMANCHACA;
+
+    if (isnan(hum)) Serial.print(F("Hum:ERR"));
+    else            { Serial.print(F("Hum:")); Serial.print(hum, 0); Serial.print(F("%")); }
 
     Serial.print(F("  Temp:"));
     if (isnan(temp)) Serial.print(F("ERR"));
@@ -114,8 +111,12 @@ void loop() {
         resetEstado();
         digitalWrite(PIN_AMARILLO, LOW);
         digitalWrite(PIN_ROJO,     LOW);
+        digitalWrite(PIN_VERDE,    humAlta ? HIGH : LOW);
         Serial.println(F("  -> SIN VEHICULO"));
     } else {
+        // Vehículo en zona → amarillo/rojo tienen prioridad, verde se apaga
+        digitalWrite(PIN_VERDE, LOW);
+
         float distActiva = (z1 && z2) ? (dist1 + dist2) / 2.0f
                          : z1         ? dist1
                          :              dist2;

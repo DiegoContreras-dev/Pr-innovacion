@@ -48,9 +48,10 @@ function parseLine(line) {
              : dist1 !== null          ? dist1
              :                           dist2
 
-  const ledGreen  = hum !== null && hum > UMBRAL_HUM
   const ledYellow = line.includes('EN MOVIMIENTO')
   const ledRed    = line.includes('DETENIDO [ROJO]')
+  // Prioridad: amarillo/rojo (vehículo en zona) apagan el verde, igual que en el firmware
+  const ledGreen  = hum !== null && hum > UMBRAL_HUM && !ledYellow && !ledRed
 
   const riskLevel = ledRed    ? 'alerta'
                   : ledYellow ? 'precaucion'
